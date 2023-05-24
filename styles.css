@@ -1,0 +1,21 @@
+/* Navbar */
+.navbar-default {
+  background-color: #4CAF50;
+}
+
+/* Body */
+body {
+  background-color: #F5F5F5;
+  color: #333333;
+}
+
+/* Accent color */
+a,
+.navbar-default .navbar-nav>li>a:focus,
+.navbar-default .navbar-nav>li>a:hover,
+.navbar-default .navbar-nav>li>a:active,
+.navbar-default .navbar-brand:focus,
+.navbar-default .navbar-brand:hover,
+.navbar-default .navbar-brand:active {
+  color: #FF5722;
+}
