@@ -1,21 +1,17 @@
-/* Navbar */
-.navbar-default {
-  background-color: #4CAF50;
+.card-header {
+  font-weight: 600;
 }
 
-/* Body */
-body {
-  background-color: #F5F5F5;
-  color: #333333;
+.bslib-sidebar-layout > .sidebar {
+  background-color: #FAFAFA;
 }
 
-/* Accent color */
-a,
-.navbar-default .navbar-nav>li>a:focus,
-.navbar-default .navbar-nav>li>a:hover,
-.navbar-default .navbar-nav>li>a:active,
-.navbar-default .navbar-brand:focus,
-.navbar-default .navbar-brand:hover,
-.navbar-default .navbar-brand:active {
-  color: #FF5722;
+.btn-secondary {
+  background-color: #264653;
+  border-color: #264653;
+}
+
+.btn-secondary:hover {
+  background-color: #1f3a44;
+  border-color: #1f3a44;
 }
