@@ -1,0 +1,1758 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel do Mercado Imobiliário — EKIO</title>
+  <style>
+    /* ============================================================
+       RESET & BASE
+       ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      /* Ekio Blue Scale */
+      --blue-50: #EEF5FA;
+      --blue-100: #D4E8F5;
+      --blue-200: #A8D0E8;
+      --blue-300: #7EB6D8;
+      --blue-400: #4A90C2;
+      --blue-500: #3A6EA5;
+      --blue-600: #2B4C7E;
+      --blue-700: #1E3A5F;
+      --blue-800: #1B3A4B;
+      --blue-900: #0D1B2A;
+
+      /* Ekio Gray Scale */
+      --gray-50: #FAFBFC;
+      --gray-100: #F7FAFC;
+      --gray-200: #EDF2F7;
+      --gray-300: #E2E8F0;
+      --gray-400: #CBD5E0;
+      --gray-500: #A0AEC0;
+      --gray-600: #718096;
+      --gray-700: #4A5568;
+      --gray-800: #2D3748;
+      --gray-900: #1A202C;
+
+      /* Ekio Accents */
+      --orange: #DD6B20;
+      --orange-light: #FBD38D;
+      --teal: #2C7A7B;
+      --teal-light: #B2F5EA;
+      --amber: #D69E2E;
+      --purple: #805AD5;
+      --red: #C53030;
+      --green: #38A169;
+
+      /* Layout */
+      --sidebar-width: 240px;
+      --sidebar-collapsed: 64px;
+      --header-height: 0px;
+      --radius: 8px;
+      --radius-sm: 4px;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.08);
+    }
+
+    body {
+      font-family: "Helvetica Neue", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-900);
+      line-height: 1.5;
+      font-size: 14px;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ============================================================
+       SIDEBAR
+       ============================================================ */
+    .sidebar {
+      width: var(--sidebar-width);
+      background: var(--blue-900);
+      color: #fff;
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      z-index: 100;
+      transition: width 0.2s ease;
+    }
+
+    .sidebar-brand {
+      padding: 24px 20px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .sidebar-brand h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #fff;
+    }
+
+    .sidebar-brand p {
+      font-size: 11px;
+      color: var(--gray-500);
+      margin-top: 4px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      padding: 16px 0;
+      overflow-y: auto;
+    }
+
+    .sidebar-nav .nav-section {
+      padding: 0 12px;
+      margin-bottom: 8px;
+    }
+
+    .sidebar-nav .nav-section-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--gray-500);
+      padding: 8px 12px 4px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      color: var(--gray-400);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .nav-item:hover {
+      background: rgba(255,255,255,0.06);
+      color: #fff;
+    }
+
+    .nav-item.active {
+      background: var(--blue-700);
+      color: #fff;
+    }
+
+    .nav-item .nav-icon {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      font-size: 11px;
+      color: var(--gray-600);
+    }
+
+    /* ============================================================
+       MAIN CONTENT
+       ============================================================ */
+    .main {
+      margin-left: var(--sidebar-width);
+      flex: 1;
+      min-height: 100vh;
+    }
+
+    .page {
+      display: none;
+      padding: 32px;
+      max-width: 1400px;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    .page-header {
+      margin-bottom: 28px;
+    }
+
+    .page-header h2 {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--gray-900);
+    }
+
+    .page-header p {
+      font-size: 13px;
+      color: var(--gray-600);
+      margin-top: 4px;
+    }
+
+    /* ============================================================
+       KPI CARDS (Panorama)
+       ============================================================ */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .kpi-card {
+      background: #fff;
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--gray-200);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+    }
+
+    .kpi-card.blue::before { background: var(--blue-700); }
+    .kpi-card.teal::before { background: var(--teal); }
+    .kpi-card.orange::before { background: var(--orange); }
+    .kpi-card.amber::before { background: var(--amber); }
+    .kpi-card.purple::before { background: var(--purple); }
+    .kpi-card.green::before { background: var(--green); }
+    .kpi-card.red::before { background: var(--red); }
+
+    .kpi-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--gray-600);
+      margin-bottom: 6px;
+    }
+
+    .kpi-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--gray-900);
+      line-height: 1.1;
+    }
+
+    .kpi-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      font-size: 11px;
+    }
+
+    .kpi-delta {
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .kpi-delta.up { color: var(--green); }
+    .kpi-delta.down { color: var(--red); }
+    .kpi-delta.neutral { color: var(--gray-600); }
+
+    .kpi-period {
+      color: var(--gray-500);
+    }
+
+    .kpi-sparkline {
+      margin-top: 10px;
+      height: 28px;
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+    }
+
+    .kpi-sparkline .bar {
+      flex: 1;
+      background: var(--blue-200);
+      border-radius: 2px 2px 0 0;
+      min-height: 3px;
+      transition: background 0.15s;
+    }
+
+    .kpi-sparkline .bar:last-child {
+      background: var(--blue-600);
+    }
+
+    /* ============================================================
+       CHART CARDS
+       ============================================================ */
+    .chart-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .chart-row.full {
+      grid-template-columns: 1fr;
+    }
+
+    .chart-row.triple {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    .chart-card {
+      background: #fff;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--gray-200);
+      overflow: hidden;
+    }
+
+    .chart-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px 10px;
+      border-bottom: 1px solid var(--gray-100);
+    }
+
+    .chart-card-header h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray-800);
+    }
+
+    .chart-card-header .chart-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .chart-card-header .chart-tag {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--blue-50);
+      color: var(--blue-700);
+      font-weight: 500;
+    }
+
+    .chart-body {
+      padding: 16px 18px 18px;
+      position: relative;
+    }
+
+    /* Placeholder chart area */
+    .chart-placeholder {
+      width: 100%;
+      border-radius: var(--radius-sm);
+      background: var(--gray-50);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .chart-placeholder.sm { height: 160px; }
+    .chart-placeholder.md { height: 220px; }
+    .chart-placeholder.lg { height: 280px; }
+    .chart-placeholder.xl { height: 340px; }
+
+    /* Fake chart visualizations */
+    .fake-line-chart {
+      position: absolute;
+      inset: 20px 16px 30px 40px;
+    }
+
+    .fake-line-chart svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .chart-axis-y {
+      position: absolute;
+      left: 8px;
+      top: 20px;
+      bottom: 30px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      font-size: 9px;
+      color: var(--gray-500);
+    }
+
+    .chart-axis-x {
+      position: absolute;
+      left: 40px;
+      right: 16px;
+      bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+      color: var(--gray-500);
+    }
+
+    .chart-legend {
+      display: flex;
+      gap: 16px;
+      padding: 8px 18px 12px;
+      border-top: 1px solid var(--gray-100);
+    }
+
+    .chart-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--gray-700);
+    }
+
+    .chart-legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    /* ============================================================
+       DENSE MODE (Bloomberg-style)
+       ============================================================ */
+    .dense .chart-card {
+      border-radius: var(--radius-sm);
+    }
+
+    .dense .chart-card-header {
+      padding: 10px 14px 8px;
+    }
+
+    .dense .chart-card-header h3 {
+      font-size: 12px;
+    }
+
+    .dense .chart-body {
+      padding: 10px 14px 12px;
+    }
+
+    .dense .chart-row {
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    /* Filter bar */
+    .filter-bar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 12px 16px;
+      background: #fff;
+      border-radius: var(--radius);
+      border: 1px solid var(--gray-200);
+      box-shadow: var(--shadow-sm);
+      flex-wrap: wrap;
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .filter-group label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--gray-600);
+    }
+
+    .filter-select {
+      font-size: 13px;
+      padding: 6px 28px 6px 10px;
+      border: 1px solid var(--gray-300);
+      border-radius: var(--radius-sm);
+      background: #fff;
+      color: var(--gray-800);
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23718096' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      cursor: pointer;
+    }
+
+    .filter-select:focus {
+      outline: none;
+      border-color: var(--blue-400);
+      box-shadow: 0 0 0 2px var(--blue-100);
+    }
+
+    .filter-chip {
+      font-size: 12px;
+      padding: 5px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--gray-300);
+      background: #fff;
+      color: var(--gray-700);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .filter-chip:hover {
+      border-color: var(--blue-400);
+      color: var(--blue-700);
+    }
+
+    .filter-chip.active {
+      background: var(--blue-700);
+      border-color: var(--blue-700);
+      color: #fff;
+    }
+
+    /* ============================================================
+       DATA TABLE (Dense mode)
+       ============================================================ */
+    .data-table-card {
+      background: #fff;
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--gray-200);
+      overflow: hidden;
+    }
+
+    .data-table-card .chart-card-header {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--gray-200);
+    }
+
+    .mini-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .mini-table th {
+      text-align: left;
+      padding: 8px 12px;
+      font-weight: 600;
+      color: var(--gray-700);
+      background: var(--gray-50);
+      border-bottom: 1px solid var(--gray-200);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .mini-table td {
+      padding: 7px 12px;
+      border-bottom: 1px solid var(--gray-100);
+      color: var(--gray-800);
+    }
+
+    .mini-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .mini-table .num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      font-weight: 500;
+    }
+
+    .mini-table .positive { color: var(--green); }
+    .mini-table .negative { color: var(--red); }
+
+    /* ============================================================
+       ABOUT PAGE
+       ============================================================ */
+    .about-content {
+      max-width: 720px;
+    }
+
+    .about-content h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--gray-900);
+      margin: 24px 0 8px;
+    }
+
+    .about-content h3:first-child {
+      margin-top: 0;
+    }
+
+    .about-content p {
+      color: var(--gray-700);
+      margin-bottom: 12px;
+      line-height: 1.7;
+    }
+
+    .about-content a {
+      color: var(--blue-700);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .about-content a:hover {
+      text-decoration: underline;
+    }
+
+    .about-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 16px 0;
+    }
+
+    .about-card {
+      background: #fff;
+      padding: 20px;
+      border-radius: var(--radius);
+      border: 1px solid var(--gray-200);
+    }
+
+    .about-card h4 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray-800);
+      margin-bottom: 6px;
+    }
+
+    .about-card p {
+      font-size: 13px;
+      color: var(--gray-600);
+      margin: 0;
+    }
+
+    /* ============================================================
+       SKELETON (placeholder tabs)
+       ============================================================ */
+    .skeleton-block {
+      background: var(--gray-200);
+      border-radius: var(--radius-sm);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .skeleton-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .skeleton-card {
+      background: #fff;
+      border-radius: var(--radius);
+      border: 1px solid var(--gray-200);
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .skeleton-card .skeleton-title {
+      width: 40%;
+      height: 14px;
+      margin-bottom: 16px;
+    }
+
+    .skeleton-card .skeleton-chart {
+      width: 100%;
+      height: 180px;
+    }
+
+    /* ============================================================
+       RESPONSIVE
+       ============================================================ */
+    @media (max-width: 1100px) {
+      .chart-row { grid-template-columns: 1fr; }
+      .chart-row.triple { grid-template-columns: 1fr 1fr; }
+      .kpi-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+    }
+
+    @media (max-width: 768px) {
+      .sidebar { width: var(--sidebar-collapsed); }
+      .sidebar .nav-item span { display: none; }
+      .sidebar-brand p { display: none; }
+      .main { margin-left: var(--sidebar-collapsed); }
+      .chart-row.triple { grid-template-columns: 1fr; }
+      .about-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ============================================================
+       UTILITIES
+       ============================================================ */
+    .text-muted { color: var(--gray-500); }
+    .text-sm { font-size: 12px; }
+    .mt-4 { margin-top: 16px; }
+    .mb-4 { margin-bottom: 16px; }
+    .gap-sm { gap: 8px; }
+  </style>
+</head>
+<body>
+
+  <!-- ============================================================
+       SIDEBAR
+       ============================================================ -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <h1>EKIO</h1>
+      <p>Mercado Imobiliário</p>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <div class="nav-section-label">Visão Geral</div>
+        <a class="nav-item active" data-page="panorama">
+          <span class="nav-icon">◉</span>
+          <span>Panorama</span>
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Indicadores</div>
+        <a class="nav-item" data-page="precos">
+          <span class="nav-icon">▤</span>
+          <span>Preços</span>
+        </a>
+        <a class="nav-item" data-page="credito">
+          <span class="nav-icon">◈</span>
+          <span>Crédito</span>
+        </a>
+        <a class="nav-item" data-page="mercado">
+          <span class="nav-icon">▦</span>
+          <span>Mercado</span>
+        </a>
+        <a class="nav-item" data-page="macro">
+          <span class="nav-icon">◎</span>
+          <span>Macro</span>
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Regional</div>
+        <a class="nav-item" data-page="saopaulo">
+          <span class="nav-icon">◆</span>
+          <span>São Paulo</span>
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label"></div>
+        <a class="nav-item" data-page="about">
+          <span class="nav-icon">ⓘ</span>
+          <span>Sobre</span>
+        </a>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      Atualizado: Mai 2025
+    </div>
+  </aside>
+
+  <!-- ============================================================
+       MAIN CONTENT
+       ============================================================ -->
+  <main class="main">
+
+    <!-- ========================================================
+         PANORAMA
+         ======================================================== -->
+    <section class="page active" id="page-panorama">
+      <div class="page-header">
+        <h2>Panorama</h2>
+        <p>Visão geral do mercado imobiliário brasileiro</p>
+      </div>
+
+      <!-- KPI Cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card blue">
+          <div class="kpi-label">Selic</div>
+          <div class="kpi-value">14,75%</div>
+          <div class="kpi-meta">
+            <span class="kpi-delta up">+0,50 pp</span>
+            <span class="kpi-period">· Mai 2025</span>
+          </div>
+          <div class="kpi-sparkline">
+            <div class="bar" style="height:40%"></div>
+            <div class="bar" style="height:35%"></div>
+            <div class="bar" style="height:38%"></div>
+            <div class="bar" style="height:45%"></div>
+            <div class="bar" style="height:55%"></div>
+            <div class="bar" style="height:60%"></div>
+            <div class="bar" style="height:68%"></div>
+            <div class="bar" style="height:75%"></div>
+            <div class="bar" style="height:82%"></div>
+            <div class="bar" style="height:90%"></div>
+            <div class="bar" style="height:95%"></div>
+            <div class="bar" style="height:100%"></div>
+          </div>
+        </div>
+
+        <div class="kpi-card orange">
+          <div class="kpi-label">IPCA</div>
+          <div class="kpi-value">5,53%</div>
+          <div class="kpi-meta">
+            <span class="kpi-delta up">+0,43 pp</span>
+            <span class="kpi-period">· 12m acum.</span>
+          </div>
+          <div class="kpi-sparkline">
+            <div class="bar" style="height:65%"></div>
+            <div class="bar" style="height:60%"></div>
+            <div class="bar" style="height:55%"></div>
+            <div class="bar" style="height:50%"></div>
+            <div class="bar" style="height:48%"></div>
+            <div class="bar" style="height:52%"></div>
+            <div class="bar" style="height:58%"></div>
+            <div class="bar" style="height:62%"></div>
+            <div class="bar" style="height:70%"></div>
+            <div class="bar" style="height:78%"></div>
+            <div class="bar" style="height:85%"></div>
+            <div class="bar" style="height:92%"></div>
+          </div>
+        </div>
+
+        <div class="kpi-card teal">
+          <div class="kpi-label">IGP-M</div>
+          <div class="kpi-value">8,12%</div>
+          <div class="kpi-meta">
+            <span class="kpi-delta up">+1,21 pp</span>
+            <span class="kpi-period">· 12m acum.</span>
+          </div>
+          <div class="kpi-sparkline">
+            <div class="bar" style="height:45%"></div>
+            <div class="bar" style="height:40%"></div>
+            <div class="bar" style="height:38%"></div>
+            <div class="bar" style="height:42%"></div>
+            <div class="bar" style="height:50%"></div>
+            <div class="bar" style="height:58%"></div>
+            <div class="bar" style="height:62%"></div>
+            <div class="bar" style="height:70%"></div>
+            <div class="bar" style="height:75%"></div>
+            <div class="bar" style="height:82%"></div>
+            <div class="bar" style="height:90%"></div>
+            <div class="bar" style="height:95%"></div>
+          </div>
+        </div>
+
+        <div class="kpi-card blue">
+          <div class="kpi-label">RPPI Venda SP</div>
+          <div class="kpi-value">+7,2%</div>
+          <div class="kpi-meta">
+            <span class="kpi-delta up">+0,8 pp</span>
+            <span class="kpi-period">· 12m acum.</span>
+          </div>
+          <div class="kpi-sparkline">
+            <div class="bar" style="height:50%"></div>
+            <div class="bar" style="height:55%"></div>
+            <div class="bar" style="height:58%"></div>
+            <div class="bar" style="height:62%"></div>
+            <div class="bar" style="height:65%"></div>
+            <div class="bar" style="height:68%"></div>
+            <div class="bar" style="height:72%"></div>
+            <div class="bar" style="height:75%"></div>
+            <div class="bar" style="height:78%"></div>
+            <div class="bar" style="height:82%"></div>
+            <div class="bar" style="height:88%"></div>
+            <div class="bar" style="height:92%"></div>
+          </div>
+        </div>
+
+        <div class="kpi-card green">
+          <div class="kpi-label">RPPI Aluguel SP</div>
+          <div class="kpi-value">+12,4%</div>
+          <div class="kpi-meta">
+            <span class="kpi-delta up">+1,5 pp</span>
+            <span class="kpi-period">· 12m acum.</span>
+          </div>
+          <div class="kpi-sparkline">
+            <div class="bar" style="height:40%"></div>
+            <div class="bar" style="height:48%"></div>
+            <div class="bar" style="height:55%"></div>
+            <div class="bar" style="height:60%"></div>
+            <div class="bar" style="height:68%"></div>
+            <div class="bar" style="height:72%"></div>
+            <div class="bar" style="height:78%"></div>
+            <div class="bar" style="height:82%"></div>
+            <div class="bar" style="height:88%"></div>
+            <div class="bar" style="height:92%"></div>
+            <div class="bar" style="height:96%"></div>
+            <div class="bar" style="height:100%"></div>
+          </div>
+        </div>
+
+        <div class="kpi-card purple">
+          <div class="kpi-label">Crédito SBPE</div>
+          <div class="kpi-value">R$ 17,2 bi</div>
+          <div class="kpi-meta">
+            <span class="kpi-delta down">-8,3%</span>
+            <span class="kpi-period">· mensal</span>
+          </div>
+          <div class="kpi-sparkline">
+            <div class="bar" style="height:100%"></div>
+            <div class="bar" style="height:95%"></div>
+            <div class="bar" style="height:88%"></div>
+            <div class="bar" style="height:85%"></div>
+            <div class="bar" style="height:80%"></div>
+            <div class="bar" style="height:78%"></div>
+            <div class="bar" style="height:72%"></div>
+            <div class="bar" style="height:68%"></div>
+            <div class="bar" style="height:65%"></div>
+            <div class="bar" style="height:60%"></div>
+            <div class="bar" style="height:58%"></div>
+            <div class="bar" style="height:55%"></div>
+          </div>
+        </div>
+
+        <div class="kpi-card amber">
+          <div class="kpi-label">VSO São Paulo</div>
+          <div class="kpi-value">14,8%</div>
+          <div class="kpi-meta">
+            <span class="kpi-delta down">-1,2 pp</span>
+            <span class="kpi-period">· mensal</span>
+          </div>
+          <div class="kpi-sparkline">
+            <div class="bar" style="height:85%"></div>
+            <div class="bar" style="height:80%"></div>
+            <div class="bar" style="height:78%"></div>
+            <div class="bar" style="height:82%"></div>
+            <div class="bar" style="height:75%"></div>
+            <div class="bar" style="height:70%"></div>
+            <div class="bar" style="height:72%"></div>
+            <div class="bar" style="height:68%"></div>
+            <div class="bar" style="height:65%"></div>
+            <div class="bar" style="height:60%"></div>
+            <div class="bar" style="height:58%"></div>
+            <div class="bar" style="height:55%"></div>
+          </div>
+        </div>
+
+        <div class="kpi-card red">
+          <div class="kpi-label">Inadimplência</div>
+          <div class="kpi-value">1,48%</div>
+          <div class="kpi-meta">
+            <span class="kpi-delta neutral">+0,02 pp</span>
+            <span class="kpi-period">· SFH</span>
+          </div>
+          <div class="kpi-sparkline">
+            <div class="bar" style="height:55%"></div>
+            <div class="bar" style="height:52%"></div>
+            <div class="bar" style="height:50%"></div>
+            <div class="bar" style="height:48%"></div>
+            <div class="bar" style="height:50%"></div>
+            <div class="bar" style="height:52%"></div>
+            <div class="bar" style="height:53%"></div>
+            <div class="bar" style="height:54%"></div>
+            <div class="bar" style="height:55%"></div>
+            <div class="bar" style="height:56%"></div>
+            <div class="bar" style="height:55%"></div>
+            <div class="bar" style="height:57%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Big Charts -->
+      <div class="chart-row">
+        <div class="chart-card">
+          <div class="chart-card-header">
+            <h3>Preço de Venda — Tendência (RPPI)</h3>
+            <span class="chart-tag">STL trend</span>
+          </div>
+          <div class="chart-body">
+            <div class="chart-placeholder lg">
+              <div class="chart-axis-y">
+                <span>160</span>
+                <span>140</span>
+                <span>120</span>
+                <span>100</span>
+                <span>80</span>
+              </div>
+              <div class="chart-axis-x">
+                <span>2020</span>
+                <span>2021</span>
+                <span>2022</span>
+                <span>2023</span>
+                <span>2024</span>
+                <span>2025</span>
+              </div>
+              <div class="fake-line-chart">
+                <svg viewBox="0 0 500 200" preserveAspectRatio="none">
+                  <polyline fill="none" stroke="#1E3A5F" stroke-width="2.5"
+                    points="0,180 40,175 80,165 120,150 160,135 200,118 240,105 280,95 320,82 360,70 400,58 440,48 480,40 500,35" />
+                  <polyline fill="none" stroke="#DD6B20" stroke-width="2.5"
+                    points="0,170 40,168 80,162 120,155 160,145 200,132 240,122 280,110 320,100 360,88 400,78 440,68 480,60 500,55" />
+                  <polyline fill="none" stroke="#2C7A7B" stroke-width="2.5" stroke-dasharray="4,3"
+                    points="0,185 40,180 80,172 120,160 160,148 200,138 240,128 280,118 320,108 360,95 400,85 440,75 480,68 500,62" />
+                </svg>
+              </div>
+            </div>
+          </div>
+          <div class="chart-legend">
+            <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#1E3A5F"></div> São Paulo</div>
+            <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#DD6B20"></div> Rio de Janeiro</div>
+            <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#2C7A7B"></div> Belo Horizonte</div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-card-header">
+            <h3>Selic × IPCA — Juros Reais</h3>
+            <span class="chart-tag">% a.a.</span>
+          </div>
+          <div class="chart-body">
+            <div class="chart-placeholder lg">
+              <div class="chart-axis-y">
+                <span>15%</span>
+                <span>12%</span>
+                <span>9%</span>
+                <span>6%</span>
+                <span>3%</span>
+              </div>
+              <div class="chart-axis-x">
+                <span>2020</span>
+                <span>2021</span>
+                <span>2022</span>
+                <span>2023</span>
+                <span>2024</span>
+                <span>2025</span>
+              </div>
+              <div class="fake-line-chart">
+                <svg viewBox="0 0 500 200" preserveAspectRatio="none">
+                  <!-- Selic -->
+                  <polyline fill="none" stroke="#1E3A5F" stroke-width="2.5"
+                    points="0,170 40,185 80,190 120,160 160,100 200,55 240,40 280,38 320,42 360,60 400,50 440,35 480,25 500,20" />
+                  <!-- IPCA -->
+                  <polyline fill="none" stroke="#DD6B20" stroke-width="2.5"
+                    points="0,145 40,140 80,100 120,60 160,45 200,70 240,100 280,115 320,125 360,120 400,110 440,100 480,90 500,85" />
+                  <!-- Juro Real (shaded area) -->
+                  <polyline fill="rgba(44,122,123,0.15)" stroke="#2C7A7B" stroke-width="1.5" stroke-dasharray="5,3"
+                    points="0,160 40,165 80,150 120,130 160,110 200,90 240,80 280,85 320,95 360,90 400,75 440,65 480,60 500,55" />
+                </svg>
+              </div>
+            </div>
+          </div>
+          <div class="chart-legend">
+            <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#1E3A5F"></div> Selic Meta</div>
+            <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#DD6B20"></div> IPCA 12m</div>
+            <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#2C7A7B"></div> Juro Real</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-row full">
+        <div class="chart-card">
+          <div class="chart-card-header">
+            <h3>Volume de Crédito Imobiliário — SBPE</h3>
+            <span class="chart-tag">R$ bilhões</span>
+          </div>
+          <div class="chart-body">
+            <div class="chart-placeholder md">
+              <div class="chart-axis-y">
+                <span>25</span>
+                <span>20</span>
+                <span>15</span>
+                <span>10</span>
+                <span>5</span>
+              </div>
+              <div class="chart-axis-x">
+                <span>Jan</span>
+                <span>Mar</span>
+                <span>Mai</span>
+                <span>Jul</span>
+                <span>Set</span>
+                <span>Nov</span>
+                <span>Jan</span>
+                <span>Mar</span>
+                <span>Mai</span>
+              </div>
+              <div class="fake-line-chart">
+                <svg viewBox="0 0 500 160" preserveAspectRatio="none">
+                  <!-- Bar chart approximation -->
+                  <rect x="10" y="40" width="28" height="120" fill="#A8D0E8" rx="2"/>
+                  <rect x="48" y="50" width="28" height="110" fill="#A8D0E8" rx="2"/>
+                  <rect x="86" y="35" width="28" height="125" fill="#A8D0E8" rx="2"/>
+                  <rect x="124" y="45" width="28" height="115" fill="#A8D0E8" rx="2"/>
+                  <rect x="162" y="55" width="28" height="105" fill="#A8D0E8" rx="2"/>
+                  <rect x="200" y="30" width="28" height="130" fill="#A8D0E8" rx="2"/>
+                  <rect x="238" y="25" width="28" height="135" fill="#A8D0E8" rx="2"/>
+                  <rect x="276" y="20" width="28" height="140" fill="#A8D0E8" rx="2"/>
+                  <rect x="314" y="15" width="28" height="145" fill="#A8D0E8" rx="2"/>
+                  <rect x="352" y="30" width="28" height="130" fill="#A8D0E8" rx="2"/>
+                  <rect x="390" y="45" width="28" height="115" fill="#A8D0E8" rx="2"/>
+                  <rect x="428" y="55" width="28" height="105" fill="#4A90C2" rx="2"/>
+                  <rect x="466" y="65" width="28" height="95" fill="#1E3A5F" rx="2"/>
+                  <!-- Trend line -->
+                  <polyline fill="none" stroke="#DD6B20" stroke-width="2" stroke-dasharray="4,3"
+                    points="24,80 62,82 100,78 138,75 176,72 214,65 252,58 290,50 328,48 366,55 404,62 442,68 480,72" />
+                </svg>
+              </div>
+            </div>
+          </div>
+          <div class="chart-legend">
+            <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#4A90C2"></div> Volume mensal</div>
+            <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#DD6B20; border-radius:0; width:12px; height:2px;"></div> Tendência</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         PRECOS (Dense mode — fully mocked)
+         ======================================================== -->
+    <section class="page" id="page-precos">
+      <div class="page-header">
+        <h2>Preços</h2>
+        <p>Índices de preços residenciais — venda e aluguel</p>
+      </div>
+
+      <div class="dense">
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+          <div class="filter-group">
+            <label>Cidade</label>
+            <select class="filter-select">
+              <option>São Paulo</option>
+              <option>Rio de Janeiro</option>
+              <option>Belo Horizonte</option>
+              <option>Curitiba</option>
+              <option>Porto Alegre</option>
+              <option>Brasília</option>
+              <option>Fortaleza</option>
+              <option>Recife</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Métrica</label>
+            <div style="display:flex;gap:4px;">
+              <span class="filter-chip active">Índice</span>
+              <span class="filter-chip">Var. 12m</span>
+              <span class="filter-chip">Var. mensal</span>
+              <span class="filter-chip">Tendência</span>
+            </div>
+          </div>
+          <div class="filter-group" style="margin-left:auto;">
+            <label>Período</label>
+            <select class="filter-select">
+              <option>5 anos</option>
+              <option>3 anos</option>
+              <option>10 anos</option>
+              <option>Máximo</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Venda Section -->
+        <div class="chart-row">
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <h3>Índice de Venda — São Paulo</h3>
+              <span class="chart-tag">base 100</span>
+            </div>
+            <div class="chart-body">
+              <div class="chart-placeholder md">
+                <div class="chart-axis-y">
+                  <span>170</span>
+                  <span>150</span>
+                  <span>130</span>
+                  <span>110</span>
+                  <span>90</span>
+                </div>
+                <div class="chart-axis-x">
+                  <span>2020</span>
+                  <span>2021</span>
+                  <span>2022</span>
+                  <span>2023</span>
+                  <span>2024</span>
+                  <span>2025</span>
+                </div>
+                <div class="fake-line-chart">
+                  <svg viewBox="0 0 500 180" preserveAspectRatio="none">
+                    <polyline fill="none" stroke="#1E3A5F" stroke-width="2"
+                      points="0,160 50,152 100,140 150,125 200,108 250,95 300,82 350,70 400,58 450,48 500,38" />
+                    <polyline fill="none" stroke="#DD6B20" stroke-width="2"
+                      points="0,155 50,150 100,142 150,130 200,115 250,100 300,88 350,75 400,62 450,52 500,42" />
+                    <polyline fill="none" stroke="#2C7A7B" stroke-width="2"
+                      points="0,165 50,158 100,148 150,135 200,120 250,108 300,96 350,85 400,72 450,60 500,50" />
+                    <!-- Trend overlay -->
+                    <polyline fill="none" stroke="#1E3A5F" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.5"
+                      points="0,162 100,142 200,112 300,85 400,60 500,40" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <div class="chart-legend">
+              <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#1E3A5F"></div> FipeZAP</div>
+              <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#DD6B20"></div> IVG-R (BCB)</div>
+              <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#2C7A7B"></div> IVAR (FGV)</div>
+            </div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <h3>Índice de Aluguel — São Paulo</h3>
+              <span class="chart-tag">base 100</span>
+            </div>
+            <div class="chart-body">
+              <div class="chart-placeholder md">
+                <div class="chart-axis-y">
+                  <span>200</span>
+                  <span>170</span>
+                  <span>140</span>
+                  <span>110</span>
+                  <span>80</span>
+                </div>
+                <div class="chart-axis-x">
+                  <span>2020</span>
+                  <span>2021</span>
+                  <span>2022</span>
+                  <span>2023</span>
+                  <span>2024</span>
+                  <span>2025</span>
+                </div>
+                <div class="fake-line-chart">
+                  <svg viewBox="0 0 500 180" preserveAspectRatio="none">
+                    <polyline fill="none" stroke="#1E3A5F" stroke-width="2"
+                      points="0,170 50,168 100,160 150,140 200,115 250,90 300,70 350,55 400,42 450,32 500,22" />
+                    <polyline fill="none" stroke="#DD6B20" stroke-width="2"
+                      points="0,165 50,162 100,155 150,138 200,118 250,95 300,78 350,62 400,50 450,40 500,30" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <div class="chart-legend">
+              <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#1E3A5F"></div> FipeZAP</div>
+              <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#DD6B20"></div> IVAR (FGV)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Variação 12m -->
+        <div class="chart-row">
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <h3>Variação 12 Meses — Venda</h3>
+              <span class="chart-tag">% a.a.</span>
+            </div>
+            <div class="chart-body">
+              <div class="chart-placeholder sm">
+                <div class="chart-axis-y">
+                  <span>15%</span>
+                  <span>10%</span>
+                  <span>5%</span>
+                  <span>0%</span>
+                </div>
+                <div class="chart-axis-x">
+                  <span>2021</span>
+                  <span>2022</span>
+                  <span>2023</span>
+                  <span>2024</span>
+                  <span>2025</span>
+                </div>
+                <div class="fake-line-chart">
+                  <svg viewBox="0 0 500 120" preserveAspectRatio="none">
+                    <!-- Zero line -->
+                    <line x1="0" y1="100" x2="500" y2="100" stroke="#E2E8F0" stroke-width="1"/>
+                    <polyline fill="none" stroke="#1E3A5F" stroke-width="2"
+                      points="0,40 60,35 120,42 180,50 240,55 300,48 360,42 420,38 480,32 500,30" />
+                    <polyline fill="none" stroke="#DD6B20" stroke-width="2"
+                      points="0,45 60,40 120,48 180,55 240,60 300,52 360,45 420,40 480,35 500,33" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <h3>Variação 12 Meses — Aluguel</h3>
+              <span class="chart-tag">% a.a.</span>
+            </div>
+            <div class="chart-body">
+              <div class="chart-placeholder sm">
+                <div class="chart-axis-y">
+                  <span>20%</span>
+                  <span>15%</span>
+                  <span>10%</span>
+                  <span>5%</span>
+                </div>
+                <div class="chart-axis-x">
+                  <span>2021</span>
+                  <span>2022</span>
+                  <span>2023</span>
+                  <span>2024</span>
+                  <span>2025</span>
+                </div>
+                <div class="fake-line-chart">
+                  <svg viewBox="0 0 500 120" preserveAspectRatio="none">
+                    <polyline fill="none" stroke="#1E3A5F" stroke-width="2"
+                      points="0,80 60,60 120,35 180,20 240,25 300,35 360,30 420,25 480,18 500,15" />
+                    <polyline fill="none" stroke="#DD6B20" stroke-width="2"
+                      points="0,85 60,70 120,45 180,30 240,32 300,40 360,35 420,28 480,22 500,18" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Comparison & Table -->
+        <div class="chart-row">
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <h3>Comparativo de Cidades — Venda 12m</h3>
+              <span class="chart-tag">% a.a.</span>
+            </div>
+            <div class="chart-body">
+              <div class="chart-placeholder md">
+                <div class="fake-line-chart">
+                  <svg viewBox="0 0 500 180" preserveAspectRatio="none">
+                    <polyline fill="none" stroke="#1E3A5F" stroke-width="2"
+                      points="0,120 60,115 120,105 180,95 240,85 300,78 360,70 420,62 480,55 500,50" />
+                    <polyline fill="none" stroke="#DD6B20" stroke-width="2"
+                      points="0,130 60,128 120,122 180,115 240,108 300,100 360,92 420,85 480,78 500,72" />
+                    <polyline fill="none" stroke="#2C7A7B" stroke-width="2"
+                      points="0,140 60,138 120,132 180,125 240,118 300,110 360,105 420,98 480,92 500,88" />
+                    <polyline fill="none" stroke="#D69E2E" stroke-width="2"
+                      points="0,135 60,130 120,128 180,120 240,115 300,108 360,100 420,95 480,88 500,82" />
+                    <polyline fill="none" stroke="#805AD5" stroke-width="2"
+                      points="0,145 60,142 120,138 180,132 240,125 300,120 360,115 420,108 480,102 500,98" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <div class="chart-legend">
+              <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#1E3A5F"></div> SP</div>
+              <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#DD6B20"></div> RJ</div>
+              <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#2C7A7B"></div> BH</div>
+              <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#D69E2E"></div> Curitiba</div>
+              <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#805AD5"></div> POA</div>
+            </div>
+          </div>
+
+          <div class="data-table-card">
+            <div class="chart-card-header">
+              <h3>Resumo por Cidade — Último Mês</h3>
+              <span class="chart-tag">FipeZAP</span>
+            </div>
+            <table class="mini-table">
+              <thead>
+                <tr>
+                  <th>Cidade</th>
+                  <th>Venda 12m</th>
+                  <th>Aluguel 12m</th>
+                  <th>Var. Mensal</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>São Paulo</td>
+                  <td class="num positive">+7,2%</td>
+                  <td class="num positive">+12,4%</td>
+                  <td class="num positive">+0,62%</td>
+                </tr>
+                <tr>
+                  <td>Rio de Janeiro</td>
+                  <td class="num positive">+5,8%</td>
+                  <td class="num positive">+10,1%</td>
+                  <td class="num positive">+0,48%</td>
+                </tr>
+                <tr>
+                  <td>Belo Horizonte</td>
+                  <td class="num positive">+6,1%</td>
+                  <td class="num positive">+9,8%</td>
+                  <td class="num positive">+0,55%</td>
+                </tr>
+                <tr>
+                  <td>Curitiba</td>
+                  <td class="num positive">+8,3%</td>
+                  <td class="num positive">+11,2%</td>
+                  <td class="num positive">+0,71%</td>
+                </tr>
+                <tr>
+                  <td>Porto Alegre</td>
+                  <td class="num positive">+4,2%</td>
+                  <td class="num positive">+8,5%</td>
+                  <td class="num positive">+0,38%</td>
+                </tr>
+                <tr>
+                  <td>Brasília</td>
+                  <td class="num positive">+5,5%</td>
+                  <td class="num positive">+9,3%</td>
+                  <td class="num positive">+0,45%</td>
+                </tr>
+                <tr>
+                  <td>Fortaleza</td>
+                  <td class="num positive">+9,1%</td>
+                  <td class="num positive">+13,0%</td>
+                  <td class="num positive">+0,82%</td>
+                </tr>
+                <tr>
+                  <td>Recife</td>
+                  <td class="num positive">+6,7%</td>
+                  <td class="num positive">+10,8%</td>
+                  <td class="num positive">+0,58%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Preço Real vs Nominal -->
+        <div class="chart-row full">
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <h3>Preço Real vs. Nominal — São Paulo (Venda)</h3>
+              <span class="chart-tag">deflacionado IPCA</span>
+            </div>
+            <div class="chart-body">
+              <div class="chart-placeholder sm">
+                <div class="chart-axis-y">
+                  <span>180</span>
+                  <span>140</span>
+                  <span>100</span>
+                  <span>60</span>
+                </div>
+                <div class="chart-axis-x">
+                  <span>2010</span>
+                  <span>2012</span>
+                  <span>2014</span>
+                  <span>2016</span>
+                  <span>2018</span>
+                  <span>2020</span>
+                  <span>2022</span>
+                  <span>2024</span>
+                </div>
+                <div class="fake-line-chart">
+                  <svg viewBox="0 0 600 120" preserveAspectRatio="none">
+                    <!-- Nominal always rising -->
+                    <polyline fill="none" stroke="#1E3A5F" stroke-width="2"
+                      points="0,110 75,90 150,65 225,50 300,48 375,52 450,42 525,30 600,18" />
+                    <!-- Real: rises, peaks, falls, recovers -->
+                    <polyline fill="none" stroke="#DD6B20" stroke-width="2"
+                      points="0,110 75,75 150,45 225,42 300,60 375,72 450,65 525,55 600,48" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <div class="chart-legend">
+              <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#1E3A5F"></div> Nominal</div>
+              <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#DD6B20"></div> Real (IPCA)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         CREDITO (Skeleton)
+         ======================================================== -->
+    <section class="page" id="page-credito">
+      <div class="page-header">
+        <h2>Crédito</h2>
+        <p>Financiamento imobiliário, taxas e inadimplência — Abecip / BCB</p>
+      </div>
+      <div class="dense">
+        <div class="filter-bar">
+          <div class="filter-group">
+            <label>Fonte</label>
+            <div style="display:flex;gap:4px;">
+              <span class="filter-chip active">SBPE</span>
+              <span class="filter-chip">FGTS</span>
+              <span class="filter-chip">Total</span>
+            </div>
+          </div>
+          <div class="filter-group">
+            <label>Métrica</label>
+            <select class="filter-select">
+              <option>Volume concedido</option>
+              <option>Saldo de carteira</option>
+              <option>Unidades financiadas</option>
+              <option>Taxa média</option>
+              <option>Inadimplência</option>
+            </select>
+          </div>
+        </div>
+        <div class="skeleton-grid">
+          <div class="skeleton-card">
+            <div class="skeleton-block skeleton-title"></div>
+            <div class="skeleton-block skeleton-chart"></div>
+          </div>
+          <div class="skeleton-card">
+            <div class="skeleton-block skeleton-title"></div>
+            <div class="skeleton-block skeleton-chart"></div>
+          </div>
+          <div class="skeleton-card">
+            <div class="skeleton-block skeleton-title"></div>
+            <div class="skeleton-block skeleton-chart"></div>
+          </div>
+          <div class="skeleton-card">
+            <div class="skeleton-block skeleton-title"></div>
+            <div class="skeleton-block skeleton-chart"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         MERCADO (Skeleton)
+         ======================================================== -->
+    <section class="page" id="page-mercado">
+      <div class="page-header">
+        <h2>Mercado</h2>
+        <p>Lançamentos, vendas e oferta — Abrainc / CBIC</p>
+      </div>
+      <div class="dense">
+        <div class="filter-bar">
+          <div class="filter-group">
+            <label>Segmento</label>
+            <div style="display:flex;gap:4px;">
+              <span class="filter-chip active">Total</span>
+              <span class="filter-chip">Econômico</span>
+              <span class="filter-chip">Alto Padrão</span>
+            </div>
+          </div>
+          <div class="filter-group">
+            <label>Período</label>
+            <select class="filter-select">
+              <option>5 anos</option>
+              <option>3 anos</option>
+              <option>Máximo</option>
+            </select>
+          </div>
+        </div>
+        <div class="skeleton-grid">
+          <div class="skeleton-card">
+            <div class="skeleton-block skeleton-title"></div>
+            <div class="skeleton-block skeleton-chart"></div>
+          </div>
+          <div class="skeleton-card">
+            <div class="skeleton-block skeleton-title"></div>
+            <div class="skeleton-block skeleton-chart"></div>
+          </div>
+          <div class="skeleton-card">
+            <div class="skeleton-block skeleton-title"></div>
+            <div class="skeleton-block skeleton-chart"></div>
+          </div>
+          <div class="skeleton-card">
+            <div class="skeleton-block skeleton-title"></div>
+            <div class="skeleton-block skeleton-chart"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         MACRO (Skeleton)
+         ======================================================== -->
+    <section class="page" id="page-macro">
+      <div class="page-header">
+        <h2>Macro</h2>
+        <p>Indicadores macroeconômicos — séries do Banco Central</p>
+      </div>
+      <div class="dense">
+        <div class="filter-bar">
+          <div class="filter-group">
+            <label>Tema</label>
+            <div style="display:flex;gap:4px;">
+              <span class="filter-chip active">Política Monetária</span>
+              <span class="filter-chip">Inflação</span>
+              <span class="filter-chip">Atividade</span>
+              <span class="filter-chip">Emprego</span>
+            </div>
+          </div>
+        </div>
+        <div class="skeleton-grid">
+          <div class="skeleton-card">
+            <div class="skeleton-block skeleton-title"></div>
+            <div class="skeleton-block skeleton-chart"></div>
+          </div>
+          <div class="skeleton-card">
+            <div class="skeleton-block skeleton-title"></div>
+            <div class="skeleton-block skeleton-chart"></div>
+          </div>
+          <div class="skeleton-card">
+            <div class="skeleton-block skeleton-title"></div>
+            <div class="skeleton-block skeleton-chart"></div>
+          </div>
+          <div class="skeleton-card">
+            <div class="skeleton-block skeleton-title"></div>
+            <div class="skeleton-block skeleton-chart"></div>
+          </div>
+          <div class="skeleton-card">
+            <div class="skeleton-block skeleton-title"></div>
+            <div class="skeleton-block skeleton-chart"></div>
+          </div>
+          <div class="skeleton-card">
+            <div class="skeleton-block skeleton-title"></div>
+            <div class="skeleton-block skeleton-chart"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         SAO PAULO (Skeleton)
+         ======================================================== -->
+    <section class="page" id="page-saopaulo">
+      <div class="page-header">
+        <h2>São Paulo</h2>
+        <p>Dados detalhados do mercado paulistano — Secovi-SP</p>
+      </div>
+      <div class="dense">
+        <div class="filter-bar">
+          <div class="filter-group">
+            <label>Indicador</label>
+            <select class="filter-select">
+              <option>Visão geral</option>
+              <option>Lançamentos</option>
+              <option>Vendas</option>
+              <option>VSO</option>
+              <option>Estoque</option>
+              <option>Inadimplência condominial</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Tipologia</label>
+            <div style="display:flex;gap:4px;">
+              <span class="filter-chip active">Total</span>
+              <span class="filter-chip">1 dorm</span>
+              <span class="filter-chip">2 dorm</span>
+              <span class="filter-chip">3+ dorm</span>
+            </div>
+          </div>
+        </div>
+        <div class="skeleton-grid">
+          <div class="skeleton-card">
+            <div class="skeleton-block skeleton-title"></div>
+            <div class="skeleton-block skeleton-chart"></div>
+          </div>
+          <div class="skeleton-card">
+            <div class="skeleton-block skeleton-title"></div>
+            <div class="skeleton-block skeleton-chart"></div>
+          </div>
+          <div class="skeleton-card">
+            <div class="skeleton-block skeleton-title"></div>
+            <div class="skeleton-block skeleton-chart"></div>
+          </div>
+          <div class="skeleton-card">
+            <div class="skeleton-block skeleton-title"></div>
+            <div class="skeleton-block skeleton-chart"></div>
+          </div>
+          <div class="skeleton-card">
+            <div class="skeleton-block skeleton-title"></div>
+            <div class="skeleton-block skeleton-chart"></div>
+          </div>
+          <div class="skeleton-card">
+            <div class="skeleton-block skeleton-title"></div>
+            <div class="skeleton-block skeleton-chart"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         ABOUT
+         ======================================================== -->
+    <section class="page" id="page-about">
+      <div class="page-header">
+        <h2>Sobre</h2>
+        <p>Sobre este painel e a EKIO</p>
+      </div>
+
+      <div class="about-content">
+        <h3>Painel do Mercado Imobiliário</h3>
+        <p>
+          Este painel reúne os principais indicadores do mercado imobiliário brasileiro em um único lugar.
+          Diferente de fontes tradicionais que mostram dados brutos, aqui cada série é tratada estatisticamente:
+          extraímos tendências, dessazonalizamos, e apresentamos a informação de forma que ela seja imediatamente útil para análise.
+        </p>
+
+        <h3>Fontes de Dados</h3>
+        <div class="about-grid">
+          <div class="about-card">
+            <h4>RPPI — Índices de Preços</h4>
+            <p>Compilação de todos os índices de preços residenciais disponíveis: FipeZAP, IVG-R (BCB), IVAR (FGV) e índices regionais.</p>
+          </div>
+          <div class="about-card">
+            <h4>Abecip — Crédito Imobiliário</h4>
+            <p>Dados de financiamento do principal fornecedor de crédito habitacional do Brasil (SBPE).</p>
+          </div>
+          <div class="about-card">
+            <h4>Abrainc — Mercado Primário</h4>
+            <p>Lançamentos, vendas e oferta do mercado de incorporação, com segmentação econômico vs. alto padrão.</p>
+          </div>
+          <div class="about-card">
+            <h4>Banco Central — Séries Macro</h4>
+            <p>Indicadores macroeconômicos (Selic, IPCA, IGP-M, PIB, emprego) e métricas agregadas de crédito imobiliário.</p>
+          </div>
+          <div class="about-card">
+            <h4>Secovi-SP — São Paulo</h4>
+            <p>Dados detalhados do mercado paulistano: lançamentos, vendas, VSO, estoque e inadimplência condominial.</p>
+          </div>
+          <div class="about-card">
+            <h4>realestatebr</h4>
+            <p>Pacote R open-source que agrega e padroniza todas as fontes acima em uma API unificada.</p>
+          </div>
+        </div>
+
+        <h3>Metodologia</h3>
+        <p>
+          Todas as séries temporais passam por decomposição STL (Seasonal and Trend decomposition using Loess)
+          para extração de tendência. Variações são calculadas sobre dados dessazonalizados quando disponíveis.
+          Comparações entre fontes respeitam diferenças metodológicas — não misturamos séries com bases distintas
+          sem indicação explícita.
+        </p>
+
+        <h3>EKIO</h3>
+        <p>
+          A EKIO é uma consultoria especializada em análise do mercado imobiliário brasileiro.
+          Combinamos rigor estatístico com conhecimento de domínio para produzir análises que informam
+          decisões de investimento, desenvolvimento e política.
+        </p>
+        <p>
+          <a href="#">ekio.io</a> · <a href="#">GitHub</a> · <a href="#">LinkedIn</a>
+        </p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============================================================
+       NAVIGATION JS
+       ============================================================ -->
+  <script>
+    document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+      item.addEventListener('click', () => {
+        // Update nav
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        item.classList.add('active');
+
+        // Update pages
+        const pageId = 'page-' + item.dataset.page;
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(pageId).classList.add('active');
+      });
+    });
+
+    // Filter chips toggle
+    document.querySelectorAll('.filter-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const siblings = chip.parentElement.querySelectorAll('.filter-chip');
+        siblings.forEach(s => s.classList.remove('active'));
+        chip.classList.add('active');
+      });
+    });
+  </script>
+
+</body>
+</html>
