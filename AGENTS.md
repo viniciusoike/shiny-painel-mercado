@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to coding agents when working with code in this repository.
 
 ## Overview
 
@@ -74,4 +74,4 @@ Six sections via a left sidebar: **Panorama** (executive summary: 8 KPI cards wi
 - RStudio-style section headers in R code (`# Section ----`), never box-style comment banners
 - `data/` and `.cache/` are gitignored — local data comes from `realestatebr` or manual download
 - Chart colors always go through `get_color_palette()` / `pal` (or `echart_palette()` for >5 series)
-- `AGENTS.md` mirrors this file for other coding agents — keep the two in sync when updating
+- `CLAUDE.md` is the canonical version of this file — keep the two in sync when updating
