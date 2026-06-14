@@ -199,10 +199,17 @@ load_dataset <- function(name, force = FALSE) {
   }
   out <- spec$prep(raw)
 
-  # A transient fetch failure (e.g. BCB API hiccup) yields an empty frame;
-  # keep the previous cache rather than clobbering it with nothing.
-  if (nrow(out) == 0 && file.exists(path)) {
-    return(readRDS(path))
+  # A transient fetch failure (e.g. BCB API hiccup) yields an empty frame.
+  # Never persist it: fall back to a previous cache if one exists, otherwise
+  # return the empty frame WITHOUT caching so the next load retries instead of
+  # poisoning the cache with permanent emptiness.
+  if (nrow(out) == 0) {
+    if (file.exists(path)) return(readRDS(path))
+    warning(
+      "Fetch for '", name, "' returned no rows; not caching. ",
+      "It will be retried on the next load."
+    )
+    return(out)
   }
 
   attr(out, "fetched_at") <- Sys.time()
