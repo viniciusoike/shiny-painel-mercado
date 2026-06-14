@@ -27,7 +27,7 @@ Dependencies are pinned with **renv** (`renv.lock`); `.Rprofile` auto-activates 
 
 ### UI Shell
 
-`bslib::page_sidebar(fillable = FALSE)` with a dark branded `sidebar(class = "ekio-sidebar")` containing custom nav links (`ekio_nav_item()`); the main area is a `navset_hidden(id = "main_nav")` with one `nav_panel_hidden()` per section. Clicking a sidebar link sets `input$sidebar_nav` via a small jQuery snippet (which also toggles the `.active` class client-side); the server calls `nav_select("main_nav", ...)`. Each page is a `tagList` starting with `page_header(title, subtitle)`. The sidebar footer shows the data `fetched_at` timestamp.
+`bslib::page_sidebar(fillable = FALSE)` with a dark branded `sidebar(class = "ekio-sidebar")` containing custom nav links (`ekio_nav_item()`); the main area is a `navset_hidden(id = "main_nav")` with one `nav_panel_hidden()` per section. The nav links carry `role="link"` / `tabindex="0"` / `aria-current` and are activated by mouse click or Enter/Space (the `nav_js` snippet handles both, toggling `.active` + `aria-current` and setting `input$sidebar_nav`); the server calls `nav_select("main_nav", ...)`. Each page is a `tagList` starting with `page_header(title, subtitle)`. The sidebar footer shows the data `fetched_at` timestamp and holds the global "Atualizar dados" refresh button (`input$refresh`) — it lives here, not per-tab, so it is reachable from every section.
 
 Dense pages follow the mockup pattern: a `.filter-bar` div of `filter_group()` inputs (the Métrica radio is styled into chips by `styles.css`), then 2-column `layout_columns()` rows of `chart_card()` (card with `.chart-card-header` title + `.chart-tag` badge + an echarts output). Preços implements this fully: index pair with STL overlay, metric pair (driven by the chip radio), 5-city comparison (`selectizeInput`, FipeZap sale), last-month summary table (`city_summary_table()` → `.mini-table`), and IPCA-deflated real vs. nominal. Card titles that mention the selected city are `textOutput(..., inline = TRUE)` in the header. The Período select maps to an initial datazoom window (`window_start` reactive).
 
@@ -37,7 +37,7 @@ The four other dense tabs each have a `.filter-bar` (period select, plus a chip 
 
 **`R/_setup.R`** — data layer:
 - `DATASETS` — registry mapping app-level dataset names to a realestatebr `(dataset, table)` pair plus a prep function. Registered: `rppi` (table `"all"` — the stacked multi-source table; only the default FipeZAP table lives in the GitHub cache, so it falls back to a fresh download), `abecip_sbpe`, `abecip_units`, `abrainc` (indicator), `bcb_series` (core), `secovi` (all), and `bcb_selic` (a custom `fetch`, not a realestatebr table — Selic isn't in the package).
-- `load_dataset(name, force = FALSE)` — fetch → prep → stamp `fetched_at` attribute → cache to `.cache/<name>.rds`. A registry entry may carry a `fetch` function that overrides the realestatebr path. `force = TRUE` (the "Atualizar dados" button) bypasses the cache; a transient empty fetch never clobbers a good cache. `load_rppi()` is a thin wrapper kept for the app.
+- `load_dataset(name, force = FALSE)` — fetch → prep → stamp `fetched_at` attribute → cache to `.cache/<name>.rds`. A registry entry may carry a `fetch` function that overrides the realestatebr path. `force = TRUE` (the "Atualizar dados" button) bypasses the cache. An empty fetch is never persisted: it falls back to a prior cache if one exists, otherwise warns and returns the empty frame uncached so the next load retries (prevents a first-run network failure from permanently caching emptiness). `load_rppi()` is a thin wrapper kept for the app.
 - `fetch_bcb_sgs(code)` — pulls a BCB SGS daily series straight from the BCB API (needs a browser-like User-Agent or it 406s; daily series are capped at ~10 years per request) and resamples to monthly. Wrapped so failures yield an empty frame.
 - `make_prep(name, required)` — generic prep that just validates required columns; replace with a real transform when a tab gets built.
 - `prep_rppi()` renames `transaction_type` → `category` (realestatebr schema change), validates, and applies `add_stl_trend()` per source/city/category panel.
@@ -53,7 +53,7 @@ The four other dense tabs each have a `.filter-bar` (period select, plus a chip 
 
 ### Server Pattern
 
-`rppi_data` is a `reactiveVal` initialized from the cache; the refresh button replaces it with a forced fetch inside `withProgress`. City choices update via `observe` + `updateSelectInput`. Charts `req()` their inputs before rendering.
+All six datasets are loaded once at app startup into a global `initial_data` list (shared across sessions, not re-read per session); each session's `reactiveVal`s (`rppi_data`, `bcb_data`, …) are seeded from it. The sidebar refresh button replaces them with forced fetches inside `withProgress`. City choices update via `observe` + `updateSelectInput`, preserving the current `input$city` / `input$cmp_cities` across a refresh when those values still exist in the new data. Charts `req()` their inputs before rendering.
 
 ## Data Sources
 
