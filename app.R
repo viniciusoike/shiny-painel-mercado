@@ -35,7 +35,10 @@ ekio_nav_item <- function(value, label, icon, active = FALSE) {
   shiny::tags$a(
     class = paste0("ekio-nav-item", if (active) " active" else ""),
     `data-value` = value,
-    shiny::tags$span(class = "nav-icon", icon),
+    role = "link",
+    tabindex = "0",
+    `aria-current` = if (active) "page" else NULL,
+    shiny::tags$span(class = "nav-icon", `aria-hidden` = "true", icon),
     shiny::tags$span(label)
   )
 }
@@ -163,11 +166,6 @@ page_precos <- shiny::tagList(
                     "Máximo" = "0"),
         selected = "5", width = "110px"
       )
-    ),
-    shiny::actionButton(
-      "refresh", "Atualizar",
-      icon = shiny::icon("rotate"),
-      class = "btn-secondary btn-sm"
     )
   ),
 
@@ -474,16 +472,31 @@ ekio_sidebar <- bslib::sidebar(
   ),
   shiny::div(
     class = "ekio-sidebar-footer",
-    shiny::uiOutput("sidebar_updated")
+    shiny::uiOutput("sidebar_updated"),
+    shiny::actionButton(
+      "refresh", "Atualizar dados",
+      icon = shiny::icon("rotate"),
+      class = "btn-sm ekio-refresh"
+    )
   )
 )
 
 # Sidebar links drive the hidden navset; active state toggles client-side.
+# Activatable by mouse or keyboard (Enter/Space) since these are not real links.
 nav_js <- "
+function ekioActivateNav(el) {
+  $('.ekio-nav-item').removeClass('active').removeAttr('aria-current');
+  $(el).addClass('active').attr('aria-current', 'page');
+  Shiny.setInputValue('sidebar_nav', $(el).data('value'));
+}
 $(document).on('click', '.ekio-nav-item', function() {
-  $('.ekio-nav-item').removeClass('active');
-  $(this).addClass('active');
-  Shiny.setInputValue('sidebar_nav', $(this).data('value'));
+  ekioActivateNav(this);
+});
+$(document).on('keydown', '.ekio-nav-item', function(e) {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    ekioActivateNav(this);
+  }
 });
 "
 
@@ -510,18 +523,33 @@ ui <- bslib::page_sidebar(
   shiny::tags$script(shiny::HTML(nav_js))
 )
 
+# Initial data ----------------------------------------------------------------
+
+# Loaded once at app startup and shared across sessions. Reading the disk cache
+# (and re-running the dependent reactives) per session is wasted work — the
+# cached frames are identical until someone hits refresh. Each session seeds its
+# reactiveVal from these objects and only re-fetches on demand.
+initial_data <- list(
+  rppi    = load_rppi(force = FALSE),
+  bcb     = load_dataset("bcb_series", force = FALSE),
+  selic   = load_dataset("bcb_selic", force = FALSE),
+  sbpe    = load_dataset("abecip_units", force = FALSE),
+  secovi  = load_dataset("secovi", force = FALSE),
+  abrainc = load_dataset("abrainc", force = FALSE)
+)
+
 # Server ----------------------------------------------------------------------
 
 server <- function(input, output, session) {
 
   # Data ----
 
-  rppi_data   <- shiny::reactiveVal(load_rppi(force = FALSE))
-  bcb_data    <- shiny::reactiveVal(load_dataset("bcb_series", force = FALSE))
-  selic_data  <- shiny::reactiveVal(load_dataset("bcb_selic", force = FALSE))
-  sbpe_units  <- shiny::reactiveVal(load_dataset("abecip_units", force = FALSE))
-  secovi_data <- shiny::reactiveVal(load_dataset("secovi", force = FALSE))
-  abrainc_data <- shiny::reactiveVal(load_dataset("abrainc", force = FALSE))
+  rppi_data    <- shiny::reactiveVal(initial_data$rppi)
+  bcb_data     <- shiny::reactiveVal(initial_data$bcb)
+  selic_data   <- shiny::reactiveVal(initial_data$selic)
+  sbpe_units   <- shiny::reactiveVal(initial_data$sbpe)
+  secovi_data  <- shiny::reactiveVal(initial_data$secovi)
+  abrainc_data <- shiny::reactiveVal(initial_data$abrainc)
 
   shiny::observeEvent(input$refresh, {
     shiny::withProgress(message = "Atualizando dados...", value = 0.1, {
@@ -575,14 +603,28 @@ server <- function(input, output, session) {
   shiny::observe({
     df <- rppi_data()
     choices  <- city_choices(df)
-    selected <- if ("São Paulo" %in% choices) "São Paulo" else choices[1]
+    # Keep the user's pick across a data refresh if it still exists.
+    current  <- shiny::isolate(input$city)
+    selected <- if (!is.null(current) && current %in% choices) {
+      current
+    } else if ("São Paulo" %in% choices) {
+      "São Paulo"
+    } else {
+      choices[1]
+    }
     shiny::updateSelectInput(session, "city", choices = choices, selected = selected)
 
-    cmp_choices <- sort(unique(fipezap()$sale$name_muni))
+    cmp_choices  <- sort(unique(fipezap()$sale$name_muni))
+    cmp_current  <- shiny::isolate(input$cmp_cities)
+    cmp_selected <- if (!is.null(cmp_current) && all(cmp_current %in% cmp_choices)) {
+      cmp_current
+    } else {
+      utils::head(intersect(MAIN_CITIES, cmp_choices), 5)
+    }
     shiny::updateSelectizeInput(
       session, "cmp_cities",
       choices  = cmp_choices,
-      selected = intersect(MAIN_CITIES, cmp_choices)[1:5]
+      selected = cmp_selected
     )
   })
 

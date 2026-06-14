@@ -94,6 +94,11 @@
   color: #fff;
 }
 
+.ekio-nav-item:focus-visible {
+  outline: 2px solid var(--ekio-blue-400);
+  outline-offset: -2px;
+}
+
 .ekio-nav-item .nav-icon {
   width: 20px;
   display: flex;
@@ -109,6 +114,20 @@
   font-size: 11px;
   color: var(--ekio-gray-600);
   margin-top: auto;
+}
+
+.ekio-sidebar-footer .ekio-refresh {
+  margin-top: 10px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--ekio-gray-300);
+  font-size: 12px;
+}
+
+.ekio-sidebar-footer .ekio-refresh:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
 }
 
 /* Page chrome ---------------------------------------------------------- */
@@ -308,6 +327,12 @@
   background: var(--ekio-blue-700);
   border-color: var(--ekio-blue-700);
   color: #fff;
+}
+
+/* The radio is visually hidden; surface keyboard focus on its chip label. */
+.filter-chips .form-check-input:focus-visible + .form-check-label {
+  outline: 2px solid var(--ekio-blue-400);
+  outline-offset: 1px;
 }
 
 /* Cards ----------------------------------------------------------------- */
