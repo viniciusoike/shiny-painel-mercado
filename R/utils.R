@@ -37,6 +37,20 @@ acum12m_pct <- function(monthly_pct) {
   as.numeric(expm1(acc) * 100)
 }
 
+# KPI deltas -------------------------------------------------------------------
+
+# Direction of a delta for coloring a KPI card. Guards against the length-0
+# diff() of a degraded series with < 2 points.
+pp_dir <- function(d) {
+  if (length(d) == 0 || is.na(d)) "neutral" else if (d >= 0) "up" else "down"
+}
+
+# Signed "pp" delta label ("+1,23 pp"); "—" when there is no valid delta.
+pp_lbl <- function(d) {
+  if (length(d) == 0 || is.na(d)) return("—")
+  sub("\\.", ",", sprintf("%+.2f pp", d))
+}
+
 # KPI cards (Panorama) ---------------------------------------------------------
 
 # Normalize the last `n` values of a series to bar heights (3%..100%) and
@@ -72,6 +86,48 @@ kpi_card <- function(label, value, delta, period, spark_values,
   )
 }
 
+# Yearly accumulated table -----------------------------------------------------
+
+# Scrollable year × index table (Ano | INCC | IPCA | IGMI-R | IVAR), most recent
+# year first. `df` is the wide frame from yearly_accum_data(); NA cells show "—".
+yearly_accum_table <- function(df) {
+  if (is.null(df) || nrow(df) == 0) return(shiny::p("Sem dados."))
+  d <- df[order(df$year, decreasing = TRUE), , drop = FALSE]
+
+  num_cell <- function(x) {
+    if (is.na(x)) return(shiny::tags$td(class = "num", "—"))
+    cls <- if (x >= 0) "num positive" else "num negative"
+    shiny::tags$td(class = cls, sub("\\.", ",", sprintf("%+.1f%%", x)))
+  }
+
+  shiny::div(
+    class = "table-scroll",
+    shiny::tags$table(
+      class = "mini-table",
+      shiny::tags$thead(
+        shiny::tags$tr(
+          shiny::tags$th("Ano"),
+          shiny::tags$th(class = "num", "INCC"),
+          shiny::tags$th(class = "num", "IPCA"),
+          shiny::tags$th(class = "num", "IGMI-R"),
+          shiny::tags$th(class = "num", "IVAR")
+        )
+      ),
+      shiny::tags$tbody(
+        lapply(seq_len(nrow(d)), function(i) {
+          shiny::tags$tr(
+            shiny::tags$td(d$year[i]),
+            num_cell(d$incc[i]),
+            num_cell(d$ipca[i]),
+            num_cell(d$igmi[i]),
+            num_cell(d$ivar[i])
+          )
+        })
+      )
+    )
+  )
+}
+
 # Summary table ----------------------------------------------------------------
 
 # Last-month summary per city (mockup "Resumo por Cidade"). sale/rent are
@@ -91,8 +147,9 @@ city_summary_table <- function(sale, rent, cities) {
   r <- last_obs(rent) |>
     dplyr::select(name_muni, rent_12m = acum12m)
 
-  tbl <- dplyr::left_join(s, r, by = "name_muni")
-  tbl <- tbl[match(intersect(cities, tbl$name_muni), tbl$name_muni), ]
+  # Rank cities by the headline metric (12m sale variation), highest first.
+  tbl <- dplyr::left_join(s, r, by = "name_muni") |>
+    dplyr::arrange(dplyr::desc(sale_12m))
 
   if (nrow(tbl) == 0) return(shiny::p("Sem dados."))
 

@@ -116,18 +116,18 @@
   margin-top: auto;
 }
 
-.ekio-sidebar-footer .ekio-refresh {
-  margin-top: 10px;
-  width: 100%;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: var(--ekio-gray-300);
-  font-size: 12px;
+.ekio-updated-label {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10px;
+  color: var(--ekio-gray-600);
 }
 
-.ekio-sidebar-footer .ekio-refresh:hover {
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
+.ekio-updated-date {
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ekio-gray-300);
 }
 
 /* Page chrome ---------------------------------------------------------- */
@@ -394,6 +394,10 @@
   color: var(--ekio-gray-800);
 }
 
+.mini-table tbody tr:nth-child(even) {
+  background: var(--ekio-gray-100);
+}
+
 .mini-table tr:last-child td {
   border-bottom: none;
 }
@@ -410,6 +414,18 @@
 
 .mini-table .num.negative {
   color: #C53030;
+}
+
+/* Scrollable table container with a pinned header */
+.table-scroll {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.table-scroll .mini-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 /* Sobre ----------------------------------------------------------------- */

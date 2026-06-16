@@ -7,7 +7,7 @@ Interactive R Shiny dashboard for Brazilian residential real estate market indic
 - **Ekio sidebar shell** — six dashboard sections (Panorama, Preços, Crédito, Mercado, Macro, São Paulo) behind a branded sidebar; design template in `mockup.html`
 - **Índices de Preços (RPPI)** — monthly rent and sale price indices across Brazilian cities, sourced via [`realestatebr`](https://github.com/viniciusoike/realestatebr)
 - **STL trend overlay** — decomposed trend component shown as a dashed line on the index chart
-- **Disk cache** — RPPI data is cached locally on first load; use the "Atualizar dados" button to force a refresh
+- **Disk cache** — data is cached locally on first load; the deployed app is read-only over a pre-warmed cache (refreshed by redeploy, see [Deployment](#deployment))
 - **brand.yml theming** — Bootstrap 5 UI themed from `_brand.yml` (Ekio colors and typography)
 
 ## Running Locally
@@ -30,6 +30,17 @@ remotes::install_github("viniciusoike/realestatebr")
 ```
 
 Network access is required on first run to fetch RPPI data. Subsequent runs use the local cache at `.cache/rppi.rds`.
+
+## Deployment
+
+The app is **read-only over a pre-warmed cache** — it never refetches at runtime, so it deploys cleanly to Posit Connect and stays stateless. To publish (or to update the data shown):
+
+```r
+Rscript tools/prewarm.R   # force-fetch every dataset into .cache/*.rds (fresh stamps)
+Rscript tools/deploy.R    # rsconnect::deployApp() bundling the .cache/*.rds seed
+```
+
+`tools/deploy.R` lists `appFiles` explicitly, so the cache ships in the bundle and dev-only files (mockup, analysis scripts) are excluded. Fresh data reaches the live app only via a redeploy.
 
 ## Project Structure
 

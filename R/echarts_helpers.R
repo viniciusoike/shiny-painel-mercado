@@ -7,13 +7,47 @@ PCT_VARS <- c("chg", "acum12m")
 
 # Shared options ---------------------------------------------------------------
 
+# Brazilian-formatted tooltip value formatter. `digits` decimal places,
+# `suffix` appended (e.g. "%"), `round_to` rounds the value to the nearest
+# multiple before formatting (100 -> hundreds, 12321 -> 12.300). Returns a JS
+# function for the `valueFormatter` slot of e_tooltip(); echarts keeps its
+# default axis layout (date header + colored markers) and only the numbers are
+# reformatted. decimal.mark "," and big.mark "." come from the pt-BR locale.
+tooltip_value_formatter <- function(digits = 0, suffix = "", round_to = 1) {
+  htmlwidgets::JS(sprintf(
+    "function(value){
+       var v = Array.isArray(value) ? value[value.length - 1] : value;
+       if (v === null || v === undefined || isNaN(v)) return '–';
+       v = Number(v);
+       if (%d > 1) v = Math.round(v / %d) * %d;
+       return v.toLocaleString('pt-BR', {minimumFractionDigits: %d, maximumFractionDigits: %d}) + '%s';
+     }",
+    round_to, round_to, round_to, digits, digits, suffix
+  ))
+}
+
+# Pick a tooltip formatter from the y-axis name. Percentage charts (y_name
+# contains "%") show one decimal and a "%" suffix; unit counts ("Unidades")
+# round to the nearest hundred; everything else shows whole numbers.
+tooltip_for <- function(y_name) {
+  if (grepl("%", y_name, fixed = TRUE)) {
+    tooltip_value_formatter(digits = 1, suffix = "%")
+  } else if (grepl("Unidades", y_name, fixed = TRUE)) {
+    tooltip_value_formatter(digits = 0, round_to = 100)
+  } else {
+    tooltip_value_formatter(digits = 0)
+  }
+}
+
 # Tooltip, legend, grid, time axis, zero markline, datazoom and toolbox.
 # window_start (Date or NULL) sets the initial zoom; NULL shows everything.
 # zero_line is for variables centered on zero (% changes); index levels skip it.
-echart_finish <- function(e, y_name, window_start = NULL, zero_line = TRUE) {
+# `tooltip_fmt` overrides the y_name-derived number format (see tooltip_for()).
+echart_finish <- function(e, y_name, window_start = NULL, zero_line = TRUE,
+                          tooltip_fmt = tooltip_for(y_name)) {
 
   e <- e |>
-    echarts4r::e_tooltip(trigger = "axis") |>
+    echarts4r::e_tooltip(trigger = "axis", valueFormatter = tooltip_fmt) |>
     echarts4r::e_legend(top = 0, type = "scroll") |>
     echarts4r::e_grid(top = 50, bottom = 60) |>
     echarts4r::e_x_axis(type = "time") |>
@@ -317,6 +351,45 @@ echart_trend_single <- function(df, y_name, raw_name = "Mensal",
   }
 
   echart_finish(out, y_name, window_start, zero_line = zero_line)
+}
+
+# Grouped (dodged) yearly bars: a category x-axis of years with one bar series
+# per index. `df` is wide (year + one numeric column per series in `cols`).
+echart_yearly_bars <- function(df, cols, labels = cols,
+                               y_name = "Acum. no ano (%)") {
+
+  d <- df[order(df$year), , drop = FALSE]
+  present <- intersect(cols, names(d))
+  if (length(present) == 0 || nrow(d) == 0) return(echart_empty())
+  d$year <- as.character(d$year)
+
+  colors <- get_color_palette(length(cols))
+  e <- echarts4r::e_charts_(d, "year")
+  for (i in seq_along(cols)) {
+    if (!cols[i] %in% names(d)) next
+    e <- echarts4r::e_bar_(
+      e, cols[i], name = labels[i],
+      itemStyle = list(color = colors[i])
+    )
+  }
+
+  e |>
+    echarts4r::e_tooltip(
+      trigger = "axis",
+      valueFormatter = tooltip_value_formatter(digits = 1, suffix = "%")
+    ) |>
+    echarts4r::e_legend(top = 0, type = "scroll") |>
+    echarts4r::e_grid(top = 45, bottom = 30) |>
+    echarts4r::e_x_axis(type = "category") |>
+    echarts4r::e_y_axis(
+      name = y_name, nameLocation = "middle", nameGap = 40, scale = TRUE
+    ) |>
+    echarts4r::e_mark_line(
+      data = list(yAxis = 0),
+      lineStyle = list(color = "#333", type = "solid", width = 1),
+      symbol = "none", silent = TRUE
+    ) |>
+    echarts4r::e_toolbox_feature(feature = "saveAsImage")
 }
 
 # Several named series from a wide df (date + one column per series).

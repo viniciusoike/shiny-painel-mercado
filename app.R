@@ -89,12 +89,22 @@ filter_group <- function(label, ..., class = NULL, style = NULL) {
 # the server fills via the `title` reactive; pass a string for a static one.
 trend_card_ui <- function(id, title, tag, height = "260px") {
   ns <- shiny::NS(id)
-  ttl <- if (is.null(title)) shiny::textOutput(ns("title"), inline = TRUE) else title
+  ttl <- if (is.null(title)) {
+    shiny::textOutput(ns("title"), inline = TRUE)
+  } else {
+    title
+  }
   chart_card(ttl, tag, output_id = ns("chart"), height = height)
 }
 
-trend_card_server <- function(id, data, y_name, raw_name = "Mensal",
-                              window = shiny::reactive(NULL), title = NULL) {
+trend_card_server <- function(
+  id,
+  data,
+  y_name,
+  raw_name = "Mensal",
+  window = shiny::reactive(NULL),
+  title = NULL
+) {
   shiny::moduleServer(id, function(input, output, session) {
     output$chart <- echarts4r::renderEcharts4r({
       echart_trend_single(data(), y_name, raw_name, window())
@@ -107,8 +117,8 @@ trend_card_server <- function(id, data, y_name, raw_name = "Mensal",
 
 # Titles for the metric selected in the Preços filter bar
 METRIC_TITLES <- c(
-  acum12m   = "Variação 12 Meses",
-  chg       = "Variação Mensal",
+  acum12m = "Variação 12 Meses",
+  chg = "Variação Mensal",
   trend_yoy = "Tendência YoY (STL)"
 )
 
@@ -120,19 +130,25 @@ page_panorama <- shiny::tagList(
   bslib::layout_columns(
     col_widths = c(7, 5),
     chart_card(
-      "Preço de Venda — Tendência (RPPI)", "STL trend",
-      output_id = "pan_trend", height = "300px"
+      "Preço de Venda — Tendência (RPPI)",
+      "STL trend",
+      output_id = "pan_trend",
+      height = "300px"
     ),
     chart_card(
-      "Selic × IPCA — Juros Reais", "% a.a.",
-      output_id = "pan_rate", height = "300px"
+      "Selic × IPCA — Juros Reais",
+      "% a.a.",
+      output_id = "pan_rate",
+      height = "300px"
     )
   ),
   bslib::layout_columns(
     col_widths = c(12),
     chart_card(
-      "Volume de Crédito Imobiliário — SBPE", "R$ bilhões",
-      output_id = "pan_credit", height = "280px"
+      "Volume de Crédito Imobiliário — SBPE",
+      "R$ bilhões",
+      output_id = "pan_credit",
+      height = "280px"
     )
   )
 )
@@ -140,31 +156,38 @@ page_panorama <- shiny::tagList(
 page_precos <- shiny::tagList(
   page_header("Preços", "Índices de preços residenciais — venda e aluguel"),
 
+  shiny::uiOutput("precos_kpi_grid"),
+
   shiny::div(
     class = "filter-bar",
     filter_group(
-      "Cidade",
-      shiny::selectInput("city", NULL, choices = NULL, width = "200px")
-    ),
-    filter_group(
-      "Métrica", class = "filter-chips",
+      "Métrica",
+      class = "filter-chips",
       shiny::radioButtons(
-        "metric", NULL, inline = TRUE,
+        "metric",
+        NULL,
+        inline = TRUE,
         choices = c(
-          "Var. 12m"    = "acum12m",
-          "Var. mensal" = "chg",
-          "Tendência"   = "trend_yoy"
+          "Var. 12m" = "acum12m",
+          "Var. mensal" = "chg"
         ),
         selected = "acum12m"
       )
     ),
     filter_group(
-      "Período", style = "margin-left:auto;",
+      "Período",
+      style = "margin-left:auto;",
       shiny::selectInput(
-        "period", NULL,
-        choices = c("3 anos" = "3", "5 anos" = "5", "10 anos" = "10",
-                    "Máximo" = "0"),
-        selected = "5", width = "110px"
+        "period",
+        NULL,
+        choices = c(
+          "3 anos" = "3",
+          "5 anos" = "5",
+          "10 anos" = "10",
+          "Máximo" = "0"
+        ),
+        selected = "5",
+        width = "110px"
       )
     )
   ),
@@ -172,37 +195,67 @@ page_precos <- shiny::tagList(
   bslib::layout_columns(
     col_widths = c(6, 6),
     chart_card(
-      shiny::textOutput("t_sale_index", inline = TRUE), "base 100",
-      output_id = "plot_sale_index"
+      "Preços vs. Inflação — Brasil (12m)",
+      "% · IGMI-R / INCC / IPCA",
+      output_id = "plot_precos_infl"
     ),
     chart_card(
-      shiny::textOutput("t_rent_index", inline = TRUE), "base 100",
-      output_id = "plot_rent_index"
+      "Venda vs. Aluguel — Brasil (12m)",
+      "% · IGMI-R / IVAR",
+      output_id = "plot_precos_venda_aluguel"
     )
   ),
 
   bslib::layout_columns(
     col_widths = c(6, 6),
     chart_card(
-      shiny::textOutput("t_sale_var", inline = TRUE), "%",
-      output_id = "plot_sale_var", height = "260px"
+      shiny::textOutput("t_sale_var", inline = TRUE),
+      "%",
+      output_id = "plot_sale_var",
+      height = "260px"
     ),
     chart_card(
-      shiny::textOutput("t_rent_var", inline = TRUE), "%",
-      output_id = "plot_rent_var", height = "260px"
+      shiny::textOutput("t_rent_var", inline = TRUE),
+      "%",
+      output_id = "plot_rent_var",
+      height = "260px"
     )
   ),
 
   bslib::layout_columns(
     col_widths = c(7, 5),
     chart_card(
-      "Comparativo de Cidades — Venda 12m", "% a.a. · FipeZap",
+      "Acumulado Anual por Índice — Brasil",
+      "% no ano",
+      output_id = "plot_yearly_bars",
+      height = "300px"
+    ),
+    bslib::card(
+      full_screen = TRUE,
+      bslib::card_header(
+        class = "chart-card-header",
+        shiny::span("Variação Anual — Histórico"),
+        shiny::span(class = "chart-tag", "% no ano")
+      ),
+      bslib::card_body(class = "p-0", shiny::uiOutput("yearly_table"))
+    )
+  ),
+
+  bslib::layout_columns(
+    col_widths = c(7, 5),
+    chart_card(
+      "Comparativo de Cidades — Venda 12m",
+      "% a.a. · FipeZap",
       shiny::selectizeInput(
-        "cmp_cities", NULL, choices = NULL, multiple = TRUE,
+        "cmp_cities",
+        NULL,
+        choices = NULL,
+        multiple = TRUE,
         options = list(maxItems = 5, placeholder = "Escolha até 5 cidades"),
         width = "100%"
       ),
-      output_id = "plot_compare", height = "280px"
+      output_id = "plot_compare",
+      height = "280px"
     ),
     bslib::card(
       full_screen = TRUE,
@@ -213,45 +266,50 @@ page_precos <- shiny::tagList(
       ),
       bslib::card_body(class = "p-0", shiny::uiOutput("city_table"))
     )
-  ),
-
-  bslib::layout_columns(
-    col_widths = c(12),
-    chart_card(
-      shiny::textOutput("t_real_nominal", inline = TRUE),
-      "deflacionado IPCA",
-      output_id = "plot_real_nominal", height = "280px"
-    )
   )
 )
 
 period_filter <- function(id, selected = "10") {
   filter_group(
-    "Período", style = "margin-left:auto;",
+    "Período",
+    style = "margin-left:auto;",
     shiny::selectInput(
-      id, NULL,
+      id,
+      NULL,
       choices = c("5 anos" = "5", "10 anos" = "10", "Máximo" = "0"),
-      selected = selected, width = "110px"
+      selected = selected,
+      width = "110px"
     )
   )
 }
 
 page_credito <- shiny::tagList(
-  page_header("Crédito",
-              "Financiamento imobiliário, taxas e inadimplência — Abecip / BCB"),
+  page_header(
+    "Crédito",
+    "Financiamento imobiliário, taxas e inadimplência — Abecip / BCB"
+  ),
   shiny::div(class = "filter-bar", period_filter("cred_period")),
   bslib::layout_columns(
     col_widths = c(6, 6),
-    trend_card_ui("cred_volume", "Volume de Financiamento Imobiliário",
-                  "R$ milhões/mês"),
+    trend_card_ui(
+      "cred_volume",
+      "Volume de Financiamento Imobiliário",
+      "R$ milhões/mês"
+    ),
     trend_card_ui("cred_units", "Unidades Financiadas", "unidades/mês")
   ),
   bslib::layout_columns(
     col_widths = c(6, 6),
-    trend_card_ui("cred_rate", "Taxa Média de Juros — Crédito Imobiliário PF",
-                  "% a.a."),
-    trend_card_ui("cred_default", "Inadimplência — Crédito Imobiliário PF",
-                  "% atraso")
+    trend_card_ui(
+      "cred_rate",
+      "Taxa Média de Juros — Crédito Imobiliário PF",
+      "% a.a."
+    ),
+    trend_card_ui(
+      "cred_default",
+      "Inadimplência — Crédito Imobiliário PF",
+      "% atraso"
+    )
   )
 )
 
@@ -260,10 +318,14 @@ page_mercado <- shiny::tagList(
   shiny::div(
     class = "filter-bar",
     filter_group(
-      "Segmento", class = "filter-chips",
+      "Segmento",
+      class = "filter-chips",
       shiny::radioButtons(
-        "mkt_segmento", NULL, inline = TRUE,
-        choices = names(ABRAINC_SEGMENTO), selected = "Total"
+        "mkt_segmento",
+        NULL,
+        inline = TRUE,
+        choices = names(ABRAINC_SEGMENTO),
+        selected = "Total"
       )
     ),
     period_filter("mkt_period")
@@ -281,63 +343,101 @@ page_mercado <- shiny::tagList(
   bslib::layout_columns(
     col_widths = c(6, 6),
     trend_card_ui("mkt_delivered", "Entregas de Unidades", "unidades/mês"),
-    chart_card("VGV — Lançamentos vs. Vendas", "R$ milhões",
-               output_id = "mkt_vgv", height = "260px")
+    chart_card(
+      "VGV — Lançamentos vs. Vendas",
+      "R$ milhões",
+      output_id = "mkt_vgv",
+      height = "260px"
+    )
   )
 )
 
 page_macro <- shiny::tagList(
   page_header("Macro", "Indicadores macroeconômicos — séries do Banco Central"),
-  shiny::div(class = "filter-bar", period_filter("macro_period", selected = "5")),
+  shiny::div(
+    class = "filter-bar",
+    period_filter("macro_period", selected = "5")
+  ),
   bslib::layout_columns(
     col_widths = c(6, 6),
     trend_card_ui("macro_selic", "Selic — Meta", "% a.a."),
-    chart_card("Inflação — Acumulado 12 Meses", "%",
-               output_id = "macro_infl", height = "260px")
+    chart_card(
+      "Inflação — Acumulado 12 Meses",
+      "%",
+      output_id = "macro_infl",
+      height = "260px"
+    )
   ),
   bslib::layout_columns(
     col_widths = c(6, 6),
-    chart_card("Selic × IPCA — Juros Reais", "% a.a.",
-               output_id = "macro_real", height = "260px"),
-    trend_card_ui("macro_fimob", "Taxa de Financiamento Imobiliário PF",
-                  "% a.a.")
+    chart_card(
+      "Selic × IPCA — Juros Reais",
+      "% a.a.",
+      output_id = "macro_real",
+      height = "260px"
+    ),
+    trend_card_ui(
+      "macro_fimob",
+      "Taxa de Financiamento Imobiliário PF",
+      "% a.a."
+    )
   ),
   bslib::layout_columns(
     col_widths = c(6, 6),
-    chart_card("Comprometimento de Renda vs. Endividamento", "% da renda",
-               output_id = "macro_debt", height = "260px"),
-    trend_card_ui("macro_default", "Inadimplência — Crédito Imobiliário PF",
-                  "% atraso")
+    chart_card(
+      "Comprometimento de Renda vs. Endividamento",
+      "% da renda",
+      output_id = "macro_debt",
+      height = "260px"
+    ),
+    trend_card_ui(
+      "macro_default",
+      "Inadimplência — Crédito Imobiliário PF",
+      "% atraso"
+    )
   )
 )
 
 page_saopaulo <- shiny::tagList(
-  page_header("São Paulo", "Dados detalhados do mercado paulistano — Secovi-SP"),
+  page_header(
+    "São Paulo",
+    "Dados detalhados do mercado paulistano — Secovi-SP"
+  ),
 
   shiny::div(
     class = "filter-bar",
     filter_group(
-      "Tipologia", class = "filter-chips",
+      "Tipologia",
+      class = "filter-chips",
       shiny::radioButtons(
-        "sp_tipologia", NULL, inline = TRUE,
-        choices  = names(SECOVI_TIPOLOGIA),
+        "sp_tipologia",
+        NULL,
+        inline = TRUE,
+        choices = names(SECOVI_TIPOLOGIA),
         selected = "Total"
       )
     ),
     filter_group(
-      "Período", style = "margin-left:auto;",
+      "Período",
+      style = "margin-left:auto;",
       shiny::selectInput(
-        "sp_period", NULL,
+        "sp_period",
+        NULL,
         choices = c("5 anos" = "5", "10 anos" = "10", "Máximo" = "0"),
-        selected = "10", width = "110px"
+        selected = "10",
+        width = "110px"
       )
     )
   ),
 
   bslib::layout_columns(
     col_widths = c(6, 6),
-    chart_card("Lançamentos vs. Vendas", "unidades/mês",
-               output_id = "sp_launch_sales", height = "260px"),
+    chart_card(
+      "Lançamentos vs. Vendas",
+      "unidades/mês",
+      output_id = "sp_launch_sales",
+      height = "260px"
+    ),
     trend_card_ui("sp_vso", NULL, "% · VSO")
   ),
   bslib::layout_columns(
@@ -347,8 +447,12 @@ page_saopaulo <- shiny::tagList(
   ),
   bslib::layout_columns(
     col_widths = c(6, 6),
-    chart_card("VGV — Lançamentos vs. Vendas", "R$ milhões",
-               output_id = "sp_vgv", height = "260px"),
+    chart_card(
+      "VGV — Lançamentos vs. Vendas",
+      "R$ milhões",
+      output_id = "sp_vgv",
+      height = "260px"
+    ),
     trend_card_ui("sp_default", "Inadimplência Condominial", "ações/mês")
   )
 )
@@ -472,12 +576,7 @@ ekio_sidebar <- bslib::sidebar(
   ),
   shiny::div(
     class = "ekio-sidebar-footer",
-    shiny::uiOutput("sidebar_updated"),
-    shiny::actionButton(
-      "refresh", "Atualizar dados",
-      icon = shiny::icon("rotate"),
-      class = "btn-sm ekio-refresh"
-    )
+    shiny::uiOutput("sidebar_updated")
   )
 )
 
@@ -525,43 +624,32 @@ ui <- bslib::page_sidebar(
 
 # Initial data ----------------------------------------------------------------
 
-# Loaded once at app startup and shared across sessions. Reading the disk cache
-# (and re-running the dependent reactives) per session is wasted work — the
-# cached frames are identical until someone hits refresh. Each session seeds its
-# reactiveVal from these objects and only re-fetches on demand.
+# Loaded once at app startup and shared across sessions. The data is static for
+# the life of the process: the app ships a pre-warmed cache (see tools/prewarm.R)
+# and never refetches at runtime, so it stays stateless and deploy-friendly. To
+# publish fresh data, re-run prewarm and redeploy. Each session reads these
+# objects through trivial reactives.
 initial_data <- list(
-  rppi    = load_rppi(force = FALSE),
-  bcb     = load_dataset("bcb_series", force = FALSE),
-  selic   = load_dataset("bcb_selic", force = FALSE),
-  sbpe    = load_dataset("abecip_units", force = FALSE),
-  secovi  = load_dataset("secovi", force = FALSE),
+  rppi = load_rppi(force = FALSE),
+  bcb = load_dataset("bcb_series", force = FALSE),
+  selic = load_dataset("bcb_selic", force = FALSE),
+  sbpe = load_dataset("abecip_units", force = FALSE),
+  secovi = load_dataset("secovi", force = FALSE),
   abrainc = load_dataset("abrainc", force = FALSE)
 )
 
 # Server ----------------------------------------------------------------------
 
 server <- function(input, output, session) {
-
   # Data ----
 
-  rppi_data    <- shiny::reactiveVal(initial_data$rppi)
-  bcb_data     <- shiny::reactiveVal(initial_data$bcb)
-  selic_data   <- shiny::reactiveVal(initial_data$selic)
-  sbpe_units   <- shiny::reactiveVal(initial_data$sbpe)
-  secovi_data  <- shiny::reactiveVal(initial_data$secovi)
-  abrainc_data <- shiny::reactiveVal(initial_data$abrainc)
-
-  shiny::observeEvent(input$refresh, {
-    shiny::withProgress(message = "Atualizando dados...", value = 0.1, {
-      rppi_data(load_rppi(force = TRUE));                shiny::incProgress(0.25)
-      bcb_data(load_dataset("bcb_series", force = TRUE)); shiny::incProgress(0.2)
-      selic_data(load_dataset("bcb_selic", force = TRUE)); shiny::incProgress(0.15)
-      sbpe_units(load_dataset("abecip_units", force = TRUE)); shiny::incProgress(0.15)
-      secovi_data(load_dataset("secovi", force = TRUE)); shiny::incProgress(0.1)
-      abrainc_data(load_dataset("abrainc", force = TRUE))
-    })
-    shiny::showNotification("Dados atualizados.", type = "message")
-  })
+  # Read-only views of the startup data; the app never refetches at runtime.
+  rppi_data <- shiny::reactive(initial_data$rppi)
+  bcb_data <- shiny::reactive(initial_data$bcb)
+  selic_data <- shiny::reactive(initial_data$selic)
+  sbpe_units <- shiny::reactive(initial_data$sbpe)
+  secovi_data <- shiny::reactive(initial_data$secovi)
+  abrainc_data <- shiny::reactive(initial_data$abrainc)
 
   splits <- shiny::reactive({
     split_rppi(rppi_data())
@@ -582,7 +670,9 @@ server <- function(input, output, session) {
   # Initial datazoom window from the "Período" filter (NULL = everything)
   window_start <- shiny::reactive({
     yrs <- as.numeric(input$period %||% "5")
-    if (is.na(yrs) || yrs == 0) return(NULL)
+    if (is.na(yrs) || yrs == 0) {
+      return(NULL)
+    }
     max(rppi_data()$date, na.rm = TRUE) %m-% lubridate::years(yrs)
   })
 
@@ -594,36 +684,30 @@ server <- function(input, output, session) {
 
   output$sidebar_updated <- shiny::renderUI({
     ts <- attr(rppi_data(), "fetched_at")
-    label <- if (is.null(ts)) "—" else format(ts, "%d/%m/%Y %H:%M")
-    paste("Atualizado:", label)
+    label <- if (is.null(ts)) "—" else format(ts, "%d/%m/%Y")
+    shiny::tagList(
+      shiny::div(class = "ekio-updated-label", "Dados atualizados em"),
+      shiny::div(class = "ekio-updated-date", label)
+    )
   })
 
   # Inputs ----
 
   shiny::observe({
-    df <- rppi_data()
-    choices  <- city_choices(df)
-    # Keep the user's pick across a data refresh if it still exists.
-    current  <- shiny::isolate(input$city)
-    selected <- if (!is.null(current) && current %in% choices) {
-      current
-    } else if ("São Paulo" %in% choices) {
-      "São Paulo"
-    } else {
-      choices[1]
-    }
-    shiny::updateSelectInput(session, "city", choices = choices, selected = selected)
-
-    cmp_choices  <- sort(unique(fipezap()$sale$name_muni))
-    cmp_current  <- shiny::isolate(input$cmp_cities)
-    cmp_selected <- if (!is.null(cmp_current) && all(cmp_current %in% cmp_choices)) {
+    # Seed the comparison selectize once at startup with the main capitals.
+    cmp_choices <- sort(unique(fipezap()$sale$name_muni))
+    cmp_current <- shiny::isolate(input$cmp_cities)
+    cmp_selected <- if (
+      !is.null(cmp_current) && all(cmp_current %in% cmp_choices)
+    ) {
       cmp_current
     } else {
       utils::head(intersect(MAIN_CITIES, cmp_choices), 5)
     }
     shiny::updateSelectizeInput(
-      session, "cmp_cities",
-      choices  = cmp_choices,
+      session,
+      "cmp_cities",
+      choices = cmp_choices,
       selected = cmp_selected
     )
   })
@@ -635,50 +719,99 @@ server <- function(input, output, session) {
     unname(METRIC_TITLES[input$metric])
   })
 
-  output$t_sale_index <- shiny::renderText({
-    paste0("Índice de Venda — ", shiny::req(input$city))
-  })
-  output$t_rent_index <- shiny::renderText({
-    paste0("Índice de Aluguel — ", shiny::req(input$city))
-  })
   output$t_sale_var <- shiny::renderText({
-    paste0(metric_title(), " — Venda")
+    paste0(metric_title(), " — Venda (Brasil)")
   })
   output$t_rent_var <- shiny::renderText({
-    paste0(metric_title(), " — Aluguel")
-  })
-  output$t_real_nominal <- shiny::renderText({
-    paste0("Preço Real vs. Nominal — ", shiny::req(input$city), " (Venda)")
+    paste0(metric_title(), " — Aluguel (Brasil)")
   })
 
   # Charts ----
 
-  output$plot_sale_index <- echarts4r::renderEcharts4r({
-    shiny::req(input$city)
-    echart_series(splits()$sale, input$city, "Índice", window_start())
+  # Preços vs. inflação (Brasil, 12m): IGMI-R price index vs. INCC and IPCA.
+  output$plot_precos_infl <- echarts4r::renderEcharts4r({
+    igmi <- splits()$sale |>
+      dplyr::filter(
+        source == "IGMI-R",
+        name_muni == "Brazil",
+        !is.na(acum12m)
+      ) |>
+      dplyr::transmute(date, `IGMI-R` = round(acum12m * 100, 2))
+    bcb <- bcb_data()
+    infl <- function(name) {
+      bcb_pick(bcb, name) |>
+        dplyr::transmute(date, value = round(acum12m_pct(value), 2))
+    }
+    wide <- igmi |>
+      dplyr::full_join(
+        dplyr::rename(infl("incc"), INCC = value),
+        by = "date"
+      ) |>
+      dplyr::full_join(dplyr::rename(infl("ipca"), IPCA = value), by = "date")
+    echart_wide_lines(
+      wide,
+      c("IGMI-R", "INCC", "IPCA"),
+      "Acum. 12m (%)",
+      window_start(),
+      zero_line = TRUE
+    )
   })
 
-  output$plot_rent_index <- echarts4r::renderEcharts4r({
-    shiny::req(input$city)
-    echart_series(splits()$rent, input$city, "Índice", window_start())
+  # Venda vs. aluguel (Brasil, 12m): IGMI-R sale index vs. national IVAR (rent,
+  # stored with name_muni = NA).
+  output$plot_precos_venda_aluguel <- echarts4r::renderEcharts4r({
+    sp <- splits()
+    igmi <- sp$sale |>
+      dplyr::filter(
+        source == "IGMI-R",
+        name_muni == "Brazil",
+        !is.na(acum12m)
+      ) |>
+      dplyr::transmute(date, `IGMI-R (venda)` = round(acum12m * 100, 2))
+    ivar <- sp$rent |>
+      dplyr::filter(source == "IVAR", is.na(name_muni), !is.na(acum12m)) |>
+      dplyr::transmute(date, `IVAR (aluguel)` = round(acum12m * 100, 2))
+    wide <- dplyr::full_join(igmi, ivar, by = "date")
+    echart_wide_lines(
+      wide,
+      c("IGMI-R (venda)", "IVAR (aluguel)"),
+      "Acum. 12m (%)",
+      window_start(),
+      zero_line = TRUE
+    )
   })
 
+  # Metric pair is national (Brasil). Venda overlays IVG-R (Brazil-only) and
+  # Aluguel overlays the national IVAR (stored with name_muni = NA).
   output$plot_sale_var <- echarts4r::renderEcharts4r({
-    shiny::req(input$city, input$metric)
+    shiny::req(input$metric)
     label <- names(vlvar)[match(input$metric, vlvar)]
-    echart_series(splits()$sale, input$city, label, window_start())
+    echart_series(
+      sale_with_ivgr(splits()$sale, "Brazil"),
+      "Brazil",
+      label,
+      window_start()
+    )
   })
 
   output$plot_rent_var <- echarts4r::renderEcharts4r({
-    shiny::req(input$city, input$metric)
+    shiny::req(input$metric)
     label <- names(vlvar)[match(input$metric, vlvar)]
-    echart_series(splits()$rent, input$city, label, window_start())
+    echart_series(
+      rent_with_ivar(splits()$rent, "Brazil"),
+      "Brazil",
+      label,
+      window_start()
+    )
   })
 
   output$plot_compare <- echarts4r::renderEcharts4r({
     shiny::req(input$cmp_cities)
-    echart_compare(fipezap()$sale, input$cmp_cities,
-                   window_start = window_start())
+    echart_compare(
+      fipezap()$sale,
+      input$cmp_cities,
+      window_start = window_start()
+    )
   })
 
   output$city_table <- shiny::renderUI({
@@ -686,10 +819,76 @@ server <- function(input, output, session) {
     city_summary_table(fz$sale, fz$rent, MAIN_CITIES)
   })
 
-  output$plot_real_nominal <- echarts4r::renderEcharts4r({
-    shiny::req(input$city)
-    d <- dplyr::filter(fipezap()$sale, name_muni == input$city)
-    echart_real_nominal(d, ipca(), window_start())
+  # Yearly accumulated variation by index (bar + scrollable history table).
+  precos_yearly <- shiny::reactive(yearly_accum_data(bcb_data(), splits()))
+
+  output$plot_yearly_bars <- echarts4r::renderEcharts4r({
+    d <- precos_yearly()
+    d <- d[d$year >= 2022, , drop = FALSE]
+    echart_yearly_bars(
+      d,
+      cols = c("incc", "ipca", "igmi", "ivar"),
+      labels = c("INCC", "IPCA", "IGMI-R", "IVAR")
+    )
+  })
+
+  output$yearly_table <- shiny::renderUI({
+    yearly_accum_table(precos_yearly())
+  })
+
+  # Preços KPIs: 12-month accumulated variation for the headline national
+  # indices (Brasil) and inflation references.
+  output$precos_kpi_grid <- shiny::renderUI({
+    sp <- splits()
+    bcb <- bcb_data()
+
+    # RPPI 12m card from the acum12m fraction (muni = NA for national IVAR).
+    rppi_kpi <- function(df, src, muni, label, color) {
+      d <- dplyr::filter(df, source == src)
+      d <- if (is.na(muni)) {
+        dplyr::filter(d, is.na(name_muni))
+      } else {
+        dplyr::filter(d, name_muni == muni)
+      }
+      d <- d |> dplyr::filter(!is.na(acum12m)) |> dplyr::arrange(date)
+      v <- utils::tail(d$acum12m, 2)
+      kpi_card(
+        label,
+        fmt_pct_br(utils::tail(v, 1)),
+        pp_lbl(diff(v) * 100),
+        "12m acum.",
+        d$acum12m * 100,
+        color = color,
+        dir = pp_dir(diff(v))
+      )
+    }
+
+    # Inflation 12m card from monthly % changes.
+    infl_kpi <- function(name, label, color) {
+      acc <- acum12m_pct(bcb_pick(bcb, name)$value)
+      acc <- acc[!is.na(acc)]
+      v <- utils::tail(acc, 2)
+      kpi_card(
+        label,
+        paste0(fmt_num_br(utils::tail(acc, 1)), "%"),
+        pp_lbl(diff(v)),
+        "12m acum.",
+        acc,
+        color = color,
+        dir = pp_dir(diff(v))
+      )
+    }
+
+    shiny::div(
+      class = "kpi-grid",
+      rppi_kpi(sp$sale, "IGMI-R", "Brazil", "IGMI-R", "blue"),
+      infl_kpi("incc", "INCC", "orange"),
+      infl_kpi("ipca", "IPCA", "teal"),
+      infl_kpi("igpm", "IGP-M", "amber"),
+      rppi_kpi(sp$rent, "IVAR", NA, "IVAR", "green"),
+      rppi_kpi(sp$sale, "FipeZap", "Brazil", "FipeZap (venda)", "purple"),
+      rppi_kpi(sp$rent, "FipeZap", "Brazil", "FipeZap (aluguel)", "red")
+    )
   })
 
   # Panorama ----
@@ -700,20 +899,14 @@ server <- function(input, output, session) {
   })
 
   output$kpi_grid <- shiny::renderUI({
-    rppi <- rppi_data()
-    fz   <- fipezap()
-    bcb  <- bcb_data()
+    fz <- fipezap()
+    bcb <- bcb_data()
 
     # last two non-NA obs of a series, sorted by date
     tail2 <- function(df, col) {
       d <- df[!is.na(df[[col]]), ]
       d <- d[order(d$date), ]
       utils::tail(d[[col]], 2)
-    }
-    pp_dir <- function(d) if (is.na(d)) "neutral" else if (d >= 0) "up" else "down"
-    pp_lbl <- function(d) {
-      if (is.na(d)) return("—")
-      sub("\\.", ",", sprintf("%+.2f pp", d))
     }
 
     bcb_series_vals <- function(name) {
@@ -724,9 +917,13 @@ server <- function(input, output, session) {
     # 1. Selic
     sel <- selic_data()$value
     selic_card <- kpi_card(
-      "Selic", paste0(fmt_num_br(utils::tail(sel, 1)), "%"),
-      pp_lbl(diff(utils::tail(sel, 2))), "a.a.", sel,
-      color = "blue", dir = pp_dir(diff(utils::tail(sel, 2)))
+      "Selic",
+      paste0(fmt_num_br(utils::tail(sel, 1)), "%"),
+      pp_lbl(diff(utils::tail(sel, 2))),
+      "a.a.",
+      sel,
+      color = "blue",
+      dir = pp_dir(diff(utils::tail(sel, 2)))
     )
 
     # 2. IPCA / 3. IGP-M (12-month accumulated)
@@ -734,27 +931,46 @@ server <- function(input, output, session) {
       acc <- acum12m_pct(bcb_series_vals(name))
       acc <- acc[!is.na(acc)]
       d <- diff(utils::tail(acc, 2))
-      kpi_card(label, paste0(fmt_num_br(utils::tail(acc, 1)), "%"),
-               pp_lbl(d), "12m acum.", acc, color = color, dir = pp_dir(d))
+      kpi_card(
+        label,
+        paste0(fmt_num_br(utils::tail(acc, 1)), "%"),
+        pp_lbl(d),
+        "12m acum.",
+        acc,
+        color = color,
+        dir = pp_dir(d)
+      )
     }
 
     # 4/5. RPPI venda/aluguel SP (acum12m fraction)
     rppi_card <- function(df, label, color) {
       d <- dplyr::filter(df, name_muni == "São Paulo")
       v <- tail2(d, "acum12m")
-      kpi_card(label, fmt_pct_br(utils::tail(v, 1)),
-               pp_lbl(diff(v) * 100), "12m acum.",
-               dplyr::filter(d, !is.na(acum12m))$acum12m * 100,
-               color = color, dir = pp_dir(diff(v)))
+      kpi_card(
+        label,
+        fmt_pct_br(utils::tail(v, 1)),
+        pp_lbl(diff(v) * 100),
+        "12m acum.",
+        dplyr::filter(d, !is.na(acum12m))$acum12m * 100,
+        color = color,
+        dir = pp_dir(diff(v))
+      )
     }
 
     # 6. Crédito SBPE (R$ bi, currency_total is in R$ million)
     cred <- sbpe_units()
     cv <- tail2(cred, "currency_total")
     cred_card <- kpi_card(
-      "Crédito SBPE", paste0("R$ ", fmt_num_br(utils::tail(cv, 1) / 1000, 1), " bi"),
-      { d <- (cv[2] / cv[1] - 1) * 100
-        if (length(cv) < 2 || is.na(d)) "—" else sub("\\.", ",", sprintf("%+.1f%%", d)) },
+      "Crédito SBPE",
+      paste0("R$ ", fmt_num_br(utils::tail(cv, 1) / 1000, 1), " bi"),
+      {
+        d <- (cv[2] / cv[1] - 1) * 100
+        if (length(cv) < 2 || is.na(d)) {
+          "—"
+        } else {
+          sub("\\.", ",", sprintf("%+.1f%%", d))
+        }
+      },
       "mensal",
       dplyr::filter(cred, !is.na(currency_total))$currency_total / 1000,
       color = "purple",
@@ -762,23 +978,37 @@ server <- function(input, output, session) {
     )
 
     # 7. VSO São Paulo
-    vso <- dplyr::filter(secovi_data(),
-                         name == "vso_vendas_sobre_oferta", variable == "sales")
+    vso <- dplyr::filter(
+      secovi_data(),
+      name == "vso_vendas_sobre_oferta",
+      variable == "sales"
+    )
     vv <- tail2(vso, "value")
     vso_card <- kpi_card(
-      "VSO São Paulo", paste0(fmt_num_br(utils::tail(vv, 1), 1), "%"),
-      pp_lbl(diff(vv)), "mensal", dplyr::arrange(vso, date)$value,
-      color = "amber", dir = pp_dir(diff(vv))
+      "VSO São Paulo",
+      paste0(fmt_num_br(utils::tail(vv, 1), 1), "%"),
+      pp_lbl(diff(vv)),
+      "mensal",
+      dplyr::arrange(vso, date)$value,
+      color = "amber",
+      dir = pp_dir(diff(vv))
     )
 
     # 8. Inadimplência (crédito direcionado PF)
-    inad <- dplyr::filter(bcb, name_simplified == "inad_credito_direcionado_pf") |>
+    inad <- dplyr::filter(
+      bcb,
+      name_simplified == "inad_credito_direcionado_pf"
+    ) |>
       dplyr::arrange(date)
     iv <- utils::tail(inad$value, 2)
     inad_card <- kpi_card(
-      "Inadimplência", paste0(fmt_num_br(utils::tail(iv, 1), 2), "%"),
-      pp_lbl(diff(iv)), "crédito PF", inad$value,
-      color = "red", dir = pp_dir(diff(iv))
+      "Inadimplência",
+      paste0(fmt_num_br(utils::tail(iv, 1), 2), "%"),
+      pp_lbl(diff(iv)),
+      "crédito PF",
+      inad$value,
+      color = "red",
+      dir = pp_dir(diff(iv))
     )
 
     shiny::div(
@@ -788,7 +1018,9 @@ server <- function(input, output, session) {
       infl_card("igpm", "IGP-M", "teal"),
       rppi_card(fz$sale, "RPPI Venda SP", "blue"),
       rppi_card(fz$rent, "RPPI Aluguel SP", "green"),
-      cred_card, vso_card, inad_card
+      cred_card,
+      vso_card,
+      inad_card
     )
   })
 
@@ -804,7 +1036,8 @@ server <- function(input, output, session) {
   output$pan_credit <- echarts4r::renderEcharts4r({
     echart_volume_trend(
       dplyr::mutate(sbpe_units(), currency_total = currency_total / 1000),
-      "currency_total", window_start = pan_window()
+      "currency_total",
+      window_start = pan_window()
     )
   })
 
@@ -812,7 +1045,9 @@ server <- function(input, output, session) {
 
   sp_window <- shiny::reactive({
     yrs <- as.numeric(input$sp_period %||% "10")
-    if (is.na(yrs) || yrs == 0) return(NULL)
+    if (is.na(yrs) || yrs == 0) {
+      return(NULL)
+    }
     max(secovi_data()$date, na.rm = TRUE) %m-% lubridate::years(yrs)
   })
 
@@ -823,58 +1058,86 @@ server <- function(input, output, session) {
   output$sp_launch_sales <- echarts4r::renderEcharts4r({
     sec <- secovi_data()
     wide <- dplyr::full_join(
-      dplyr::rename(secovi_pick(sec, "launches", "unidades"),
-                    Lançamentos = value),
+      dplyr::rename(
+        secovi_pick(sec, "launches", "unidades"),
+        Lançamentos = value
+      ),
       dplyr::rename(secovi_pick(sec, "sales", "unidades"), Vendas = value),
       by = "date"
     )
-    echart_wide_lines(wide, c("Lançamentos", "Vendas"),
-                      "Unidades", sp_window())
+    echart_wide_lines(wide, c("Lançamentos", "Vendas"), "Unidades", sp_window())
   })
 
   trend_card_server(
     "sp_vso",
-    shiny::reactive(secovi_pick(secovi_data(), sp_sales_var(),
-                                "vso_vendas_sobre_oferta")),
-    "VSO (%)", "VSO mensal", sp_window,
+    shiny::reactive(secovi_pick(
+      secovi_data(),
+      sp_sales_var(),
+      "vso_vendas_sobre_oferta"
+    )),
+    "VSO (%)",
+    "VSO mensal",
+    sp_window,
     title = shiny::reactive(paste0("VSO — ", input$sp_tipologia %||% "Total"))
   )
   trend_card_server(
     "sp_sales",
     shiny::reactive(secovi_pick(secovi_data(), sp_sales_var(), "unidades")),
-    "Unidades", "Vendas/mês", sp_window,
-    title = shiny::reactive(paste0("Vendas — ", input$sp_tipologia %||% "Total"))
+    "Unidades",
+    "Vendas/mês",
+    sp_window,
+    title = shiny::reactive(paste0(
+      "Vendas — ",
+      input$sp_tipologia %||% "Total"
+    ))
   )
   trend_card_server(
     "sp_supply",
     shiny::reactive(secovi_pick(secovi_data(), "supply", "saldo_unidades")),
-    "Unidades", "Estoque", sp_window
+    "Unidades",
+    "Estoque",
+    sp_window
   )
   trend_card_server(
     "sp_default",
-    shiny::reactive(secovi_pick(secovi_data(), "default_condominio",
-                                "acao_por_falta_de_pagamento")),
-    "Ações", "Ações/mês", sp_window
+    shiny::reactive(secovi_pick(
+      secovi_data(),
+      "default_condominio",
+      "acao_por_falta_de_pagamento"
+    )),
+    "Ações",
+    "Ações/mês",
+    sp_window
   )
 
   output$sp_vgv <- echarts4r::renderEcharts4r({
     sec <- secovi_data()
     wide <- dplyr::full_join(
-      dplyr::rename(secovi_pick(sec, "launches", "vgv_potencial_em_r_milhoes"),
-                    Lançamentos = value),
-      dplyr::rename(secovi_pick(sec, "sales", "vgv_em_milhoes_de_r"),
-                    Vendas = value),
+      dplyr::rename(
+        secovi_pick(sec, "launches", "vgv_potencial_em_r_milhoes"),
+        Lançamentos = value
+      ),
+      dplyr::rename(
+        secovi_pick(sec, "sales", "vgv_em_milhoes_de_r"),
+        Vendas = value
+      ),
       by = "date"
     )
-    echart_wide_lines(wide, c("Lançamentos", "Vendas"),
-                      "R$ milhões", sp_window())
+    echart_wide_lines(
+      wide,
+      c("Lançamentos", "Vendas"),
+      "R$ milhões",
+      sp_window()
+    )
   })
 
   # Crédito (Abecip / BCB) ----
 
   win_from <- function(period, ref, default = "10") {
     yrs <- as.numeric(period %||% default)
-    if (is.na(yrs) || yrs == 0) return(NULL)
+    if (is.na(yrs) || yrs == 0) {
+      return(NULL)
+    }
     max(ref, na.rm = TRUE) %m-% lubridate::years(yrs)
   }
 
@@ -882,28 +1145,42 @@ server <- function(input, output, session) {
 
   trend_card_server(
     "cred_volume",
-    shiny::reactive(dplyr::transmute(sbpe_units(), date, value = currency_total)),
-    "R$ milhões", "Volume/mês", cred_win
+    shiny::reactive(dplyr::transmute(
+      sbpe_units(),
+      date,
+      value = currency_total
+    )),
+    "R$ milhões",
+    "Volume/mês",
+    cred_win
   )
   trend_card_server(
     "cred_units",
     shiny::reactive(dplyr::transmute(sbpe_units(), date, value = units_total)),
-    "Unidades", "Unidades/mês", cred_win
+    "Unidades",
+    "Unidades/mês",
+    cred_win
   )
   trend_card_server(
     "cred_rate",
     shiny::reactive(bcb_pick(bcb_data(), "taxa_fimob_pf_total")),
-    "% a.a.", "Taxa", cred_win
+    "% a.a.",
+    "Taxa",
+    cred_win
   )
   trend_card_server(
     "cred_default",
     shiny::reactive(bcb_pick(bcb_data(), "atraso_fimob_pf_total")),
-    "% atraso", "Atraso", cred_win
+    "% atraso",
+    "Atraso",
+    cred_win
   )
 
   # Mercado (Abrainc) ----
 
-  mkt_seg <- shiny::reactive(unname(ABRAINC_SEGMENTO[input$mkt_segmento %||% "Total"]))
+  mkt_seg <- shiny::reactive(unname(ABRAINC_SEGMENTO[
+    input$mkt_segmento %||% "Total"
+  ]))
   mkt_win <- shiny::reactive(win_from(input$mkt_period, abrainc_data()$date))
   mkt_seg_label <- function(prefix) {
     shiny::reactive(paste0(prefix, " — ", input$mkt_segmento %||% "Total"))
@@ -912,23 +1189,47 @@ server <- function(input, output, session) {
     shiny::reactive(abrainc_pick(abrainc_data(), category, mkt_seg()))
   }
 
-  trend_card_server("mkt_launch", mkt_pick("new_units"), "Unidades",
-                    title = mkt_seg_label("Lançamentos"), window = mkt_win)
-  trend_card_server("mkt_sold", mkt_pick("sold"), "Unidades",
-                    title = mkt_seg_label("Vendas"), window = mkt_win)
-  trend_card_server("mkt_supply", mkt_pick("supply"), "Unidades",
-                    title = mkt_seg_label("Oferta"), window = mkt_win)
-  trend_card_server("mkt_distrato", mkt_pick("distratado"), "Unidades",
-                    title = mkt_seg_label("Distratos"), window = mkt_win)
+  trend_card_server(
+    "mkt_launch",
+    mkt_pick("new_units"),
+    "Unidades",
+    title = mkt_seg_label("Lançamentos"),
+    window = mkt_win
+  )
+  trend_card_server(
+    "mkt_sold",
+    mkt_pick("sold"),
+    "Unidades",
+    title = mkt_seg_label("Vendas"),
+    window = mkt_win
+  )
+  trend_card_server(
+    "mkt_supply",
+    mkt_pick("supply"),
+    "Unidades",
+    title = mkt_seg_label("Oferta"),
+    window = mkt_win
+  )
+  trend_card_server(
+    "mkt_distrato",
+    mkt_pick("distratado"),
+    "Unidades",
+    title = mkt_seg_label("Distratos"),
+    window = mkt_win
+  )
   trend_card_server(
     "mkt_delivered",
     shiny::reactive(abrainc_pick(abrainc_data(), "delivered", "total")),
-    "Unidades", window = mkt_win
+    "Unidades",
+    window = mkt_win
   )
   output$mkt_vgv <- echarts4r::renderEcharts4r({
     ab <- abrainc_data()
     wide <- dplyr::full_join(
-      dplyr::rename(abrainc_pick(ab, "value", "new_units"), Lançamentos = value),
+      dplyr::rename(
+        abrainc_pick(ab, "value", "new_units"),
+        Lançamentos = value
+      ),
       dplyr::rename(abrainc_pick(ab, "value", "sale"), Vendas = value),
       by = "date"
     )
@@ -937,40 +1238,75 @@ server <- function(input, output, session) {
 
   # Macro (BCB) ----
 
-  macro_win <- shiny::reactive(win_from(input$macro_period, bcb_data()$date, "5"))
+  macro_win <- shiny::reactive(win_from(
+    input$macro_period,
+    bcb_data()$date,
+    "5"
+  ))
 
-  trend_card_server("macro_selic", shiny::reactive(selic_data()),
-                    "% a.a.", "Selic Meta", macro_win)
+  trend_card_server(
+    "macro_selic",
+    shiny::reactive(selic_data()),
+    "% a.a.",
+    "Selic Meta",
+    macro_win
+  )
   output$macro_infl <- echarts4r::renderEcharts4r({
     bcb <- bcb_data()
-    infl <- function(name) dplyr::transmute(bcb_pick(bcb, name),
-                                            date, value = acum12m_pct(value))
+    infl <- function(name) {
+      dplyr::transmute(bcb_pick(bcb, name), date, value = acum12m_pct(value))
+    }
     wide <- dplyr::rename(infl("ipca"), IPCA = value) |>
-      dplyr::full_join(dplyr::rename(infl("igpm"), `IGP-M` = value), by = "date") |>
+      dplyr::full_join(
+        dplyr::rename(infl("igpm"), `IGP-M` = value),
+        by = "date"
+      ) |>
       dplyr::full_join(dplyr::rename(infl("incc"), INCC = value), by = "date")
-    echart_wide_lines(wide, c("IPCA", "IGP-M", "INCC"), "% 12m",
-                      macro_win(), zero_line = TRUE)
+    echart_wide_lines(
+      wide,
+      c("IPCA", "IGP-M", "INCC"),
+      "% 12m",
+      macro_win(),
+      zero_line = TRUE
+    )
   })
   output$macro_real <- echarts4r::renderEcharts4r({
     echart_real_rate(selic_data(), ipca(), macro_win())
   })
-  trend_card_server("macro_fimob",
-                    shiny::reactive(bcb_pick(bcb_data(), "taxa_fimob_pf_total")),
-                    "% a.a.", "Taxa", macro_win)
+  trend_card_server(
+    "macro_fimob",
+    shiny::reactive(bcb_pick(bcb_data(), "taxa_fimob_pf_total")),
+    "% a.a.",
+    "Taxa",
+    macro_win
+  )
   output$macro_debt <- echarts4r::renderEcharts4r({
     bcb <- bcb_data()
-    wide <- dplyr::rename(bcb_pick(bcb, "comprometimento_renda_servico_total"),
-                          Comprometimento = value) |>
+    wide <- dplyr::rename(
+      bcb_pick(bcb, "comprometimento_renda_servico_total"),
+      Comprometimento = value
+    ) |>
       dplyr::full_join(
-        dplyr::rename(bcb_pick(bcb, "endividamento_total"), Endividamento = value),
+        dplyr::rename(
+          bcb_pick(bcb, "endividamento_total"),
+          Endividamento = value
+        ),
         by = "date"
       )
-    echart_wide_lines(wide, c("Comprometimento", "Endividamento"),
-                      "% da renda", macro_win())
+    echart_wide_lines(
+      wide,
+      c("Comprometimento", "Endividamento"),
+      "% da renda",
+      macro_win()
+    )
   })
-  trend_card_server("macro_default",
-                    shiny::reactive(bcb_pick(bcb_data(), "atraso_fimob_pf_total")),
-                    "% atraso", "Atraso", macro_win)
+  trend_card_server(
+    "macro_default",
+    shiny::reactive(bcb_pick(bcb_data(), "atraso_fimob_pf_total")),
+    "% atraso",
+    "Atraso",
+    macro_win
+  )
 }
 
 shinyApp(ui = ui, server = server)

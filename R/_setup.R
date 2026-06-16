@@ -190,14 +190,21 @@ load_dataset <- function(name, force = FALSE) {
   }
 
   # spec$fetch overrides the default realestatebr path (e.g. direct BCB API).
-  raw <- if (!is.null(spec$fetch)) {
-    spec$fetch()
-  } else {
-    suppressWarnings(
-      realestatebr::get_dataset(spec$dataset, table = spec$table)
-    )
-  }
-  out <- spec$prep(raw)
+  # A failed fetch/prep (network error, schema change) must never abort startup:
+  # degrade to an empty frame and let the fallback below recover from cache.
+  out <- tryCatch({
+    raw <- if (!is.null(spec$fetch)) {
+      spec$fetch()
+    } else {
+      suppressWarnings(
+        realestatebr::get_dataset(spec$dataset, table = spec$table)
+      )
+    }
+    spec$prep(raw)
+  }, error = function(e) {
+    warning("Fetch/prep for '", name, "' failed: ", conditionMessage(e))
+    data.frame()
+  })
 
   # A transient fetch failure (e.g. BCB API hiccup) yields an empty frame.
   # Never persist it: fall back to a previous cache if one exists, otherwise
@@ -213,8 +220,14 @@ load_dataset <- function(name, force = FALSE) {
   }
 
   attr(out, "fetched_at") <- Sys.time()
-  dir.create(CACHE_DIR, showWarnings = FALSE, recursive = TRUE)
-  saveRDS(out, path)
+  # Persisting is best-effort: on a read-only host (e.g. Posit Connect) the
+  # write may fail, which must not abort the load — the in-memory frame is fine.
+  tryCatch({
+    dir.create(CACHE_DIR, showWarnings = FALSE, recursive = TRUE)
+    saveRDS(out, path)
+  }, error = function(e) {
+    warning("Could not write cache for '", name, "': ", conditionMessage(e))
+  })
   out
 }
 
@@ -228,6 +241,72 @@ split_rppi <- function(df) {
   list(
     rent = dplyr::filter(df, category == "rent"),
     sale = dplyr::filter(df, category == "sale")
+  )
+}
+
+# IVG-R (BCB) is a national index — sale-only, available solely for "Brazil".
+# To show it alongside the per-city sources on the Venda variation chart, relabel
+# its Brazil rows to the selected city (a no-op when the city already is Brazil).
+sale_with_ivgr <- function(sale, city) {
+  base <- dplyr::filter(sale, name_muni == city)
+  if (identical(city, "Brazil")) return(base)
+  ivgr <- dplyr::filter(sale, source == "IVG-R", name_muni == "Brazil")
+  if (nrow(ivgr) == 0) return(base)
+  ivgr$name_muni <- city
+  dplyr::bind_rows(base, ivgr)
+}
+
+# IVAR (FGV) national rent index is stored with name_muni = NA. To show it
+# alongside the per-city rent sources, relabel it to the requested city (a no-op
+# unless that city is "Brazil", since IVAR has no per-city series here).
+rent_with_ivar <- function(rent, city) {
+  base <- dplyr::filter(rent, name_muni == city)
+  if (!identical(city, "Brazil")) return(base)
+  ivar <- dplyr::filter(rent, source == "IVAR", is.na(name_muni))
+  if (nrow(ivar) == 0) return(base)
+  ivar$name_muni <- city
+  dplyr::bind_rows(base, ivar)
+}
+
+# Calendar-year accumulated variation (%) per index, one row per year. Inflation
+# series (INCC, IPCA — stored as monthly %) compound within the year; price
+# indices (IGMI-R, IVAR — levels) use Dec/Dec-1 (last available month for the
+# current, partial year). Years run 2010..latest; cells before a series starts
+# are NA.
+yearly_accum_data <- function(bcb, sp) {
+  infl_year <- function(name) {
+    bcb |>
+      dplyr::filter(name_simplified == !!name, !is.na(value)) |>
+      dplyr::arrange(date) |>
+      dplyr::mutate(year = lubridate::year(date)) |>
+      dplyr::group_by(year) |>
+      dplyr::summarise(v = (prod(1 + value / 100) - 1) * 100, .groups = "drop")
+  }
+  idx_year <- function(df) {
+    df |>
+      dplyr::filter(!is.na(index)) |>
+      dplyr::arrange(date) |>
+      dplyr::mutate(year = lubridate::year(date)) |>
+      dplyr::group_by(year) |>
+      dplyr::slice_max(date, n = 1, with_ties = FALSE) |>
+      dplyr::ungroup() |>
+      dplyr::arrange(year) |>
+      dplyr::transmute(year, v = (index / dplyr::lag(index) - 1) * 100)
+  }
+
+  incc <- infl_year("incc")
+  ipca <- infl_year("ipca")
+  igmi <- idx_year(dplyr::filter(sp$sale, source == "IGMI-R", name_muni == "Brazil"))
+  ivar <- idx_year(dplyr::filter(sp$rent, source == "IVAR", is.na(name_muni)))
+
+  max_year <- suppressWarnings(max(c(incc$year, ipca$year, igmi$year, ivar$year)))
+  if (!is.finite(max_year)) return(data.frame())
+  years <- 2010:max_year
+  pick <- function(t) t$v[match(years, t$year)]
+  data.frame(
+    year = years,
+    incc = pick(incc), ipca = pick(ipca),
+    igmi = pick(igmi), ivar = pick(ivar)
   )
 }
 
