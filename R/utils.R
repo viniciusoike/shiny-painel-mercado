@@ -128,6 +128,60 @@ yearly_accum_table <- function(df) {
   )
 }
 
+# Secovi dormitório table ------------------------------------------------------
+
+# Annual sales units per dormitório (Ano | 1..4 dorm | Total | Δ a/a), most
+# recent year first. `df` is the wide frame from secovi_rooms_yearly(); the
+# trend column is the year-over-year % change of the Total. NA cells show "—".
+secovi_rooms_table <- function(df, cols = c("1 dorm", "2 dorm", "3 dorm", "4 dorm")) {
+  if (is.null(df) || nrow(df) == 0) return(shiny::p("Sem dados."))
+  present <- intersect(cols, names(df))
+  if (length(present) == 0) return(shiny::p("Sem dados."))
+
+  d <- df[order(df$year), , drop = FALSE]
+  d$Total <- rowSums(as.matrix(d[present]), na.rm = TRUE)
+  d$Total[rowSums(!is.na(as.matrix(d[present]))) == 0] <- NA_real_
+  d$yoy <- c(NA_real_, d$Total[-1] / d$Total[-nrow(d)] - 1)
+  # Drop years with no complete data (Total is NA), then most-recent-first.
+  d <- d[!is.na(d$Total), , drop = FALSE]
+  d <- d[order(d$year, decreasing = TRUE), , drop = FALSE]
+  if (nrow(d) == 0) return(shiny::p("Sem dados."))
+
+  num_cell <- function(x) {
+    if (is.na(x)) return(shiny::tags$td(class = "num", "—"))
+    shiny::tags$td(class = "num", fmt_num_br(x, 0))
+  }
+  yoy_cell <- function(x) {
+    cls <- if (is.na(x) || x >= 0) "num positive" else "num negative"
+    shiny::tags$td(class = cls, fmt_pct_br(x, 1))
+  }
+
+  shiny::div(
+    class = "table-scroll",
+    shiny::tags$table(
+      class = "mini-table",
+      shiny::tags$thead(
+        shiny::tags$tr(
+          shiny::tags$th("Ano"),
+          lapply(present, function(c) shiny::tags$th(class = "num", c)),
+          shiny::tags$th(class = "num", "Total"),
+          shiny::tags$th(class = "num", "Δ a/a")
+        )
+      ),
+      shiny::tags$tbody(
+        lapply(seq_len(nrow(d)), function(i) {
+          shiny::tags$tr(
+            shiny::tags$td(d$year[i]),
+            lapply(present, function(c) num_cell(d[[c]][i])),
+            num_cell(d$Total[i]),
+            yoy_cell(d$yoy[i])
+          )
+        })
+      )
+    )
+  )
+}
+
 # Summary table ----------------------------------------------------------------
 
 # Last-month summary per city (mockup "Resumo por Cidade"). sale/rent are

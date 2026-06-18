@@ -407,17 +407,6 @@ page_saopaulo <- shiny::tagList(
   shiny::div(
     class = "filter-bar",
     filter_group(
-      "Tipologia",
-      class = "filter-chips",
-      shiny::radioButtons(
-        "sp_tipologia",
-        NULL,
-        inline = TRUE,
-        choices = names(SECOVI_TIPOLOGIA),
-        selected = "Total"
-      )
-    ),
-    filter_group(
       "Período",
       style = "margin-left:auto;",
       shiny::selectInput(
@@ -434,26 +423,53 @@ page_saopaulo <- shiny::tagList(
     col_widths = c(6, 6),
     chart_card(
       "Lançamentos vs. Vendas",
-      "unidades/mês",
+      "unidades · soma 12m",
       output_id = "sp_launch_sales",
       height = "260px"
     ),
-    trend_card_ui("sp_vso", NULL, "% · VSO")
-  ),
-  bslib::layout_columns(
-    col_widths = c(6, 6),
-    trend_card_ui("sp_sales", NULL, "unidades/mês"),
-    trend_card_ui("sp_supply", "Oferta — Saldo de Unidades", "estoque")
+    chart_card(
+      "VGV — Lançamentos vs. Vendas",
+      "R$ milhões · soma 12m",
+      output_id = "sp_vgv",
+      height = "260px"
+    )
   ),
   bslib::layout_columns(
     col_widths = c(6, 6),
     chart_card(
-      "VGV — Lançamentos vs. Vendas",
-      "R$ milhões",
-      output_id = "sp_vgv",
+      "Vendas por Dormitório",
+      "unidades · soma 12m",
+      output_id = "sp_rooms_area",
       height = "260px"
     ),
-    trend_card_ui("sp_default", "Inadimplência Condominial", "ações/mês")
+    chart_card(
+      "VSO por Dormitório",
+      "% · tendência STL",
+      output_id = "sp_rooms_vso",
+      height = "260px"
+    )
+  ),
+  bslib::layout_columns(
+    col_widths = c(7, 5),
+    chart_card(
+      "Participação por Dormitório",
+      "% · vendas/ano",
+      output_id = "sp_rooms_share",
+      height = "300px"
+    ),
+    bslib::card(
+      full_screen = TRUE,
+      bslib::card_header(
+        class = "chart-card-header",
+        shiny::span("Vendas Anuais por Dormitório"),
+        shiny::span(class = "chart-tag", "unidades · soma anual")
+      ),
+      bslib::card_body(class = "p-0", shiny::uiOutput("sp_rooms_table"))
+    )
+  ),
+  bslib::layout_columns(
+    col_widths = c(12),
+    trend_card_ui("sp_supply", "Oferta — Saldo de Unidades", "estoque")
   )
 )
 
@@ -1051,46 +1067,53 @@ server <- function(input, output, session) {
     max(secovi_data()$date, na.rm = TRUE) %m-% lubridate::years(yrs)
   })
 
-  sp_sales_var <- shiny::reactive({
-    unname(SECOVI_TIPOLOGIA[input$sp_tipologia %||% "Total"])
-  })
-
   output$sp_launch_sales <- echarts4r::renderEcharts4r({
     sec <- secovi_data()
     wide <- dplyr::full_join(
       dplyr::rename(
-        secovi_pick(sec, "launches", "unidades"),
+        roll_sum(secovi_pick(sec, "launches", "unidades")),
         Lançamentos = value
       ),
-      dplyr::rename(secovi_pick(sec, "sales", "unidades"), Vendas = value),
+      dplyr::rename(
+        roll_sum(secovi_pick(sec, "sales", "unidades")),
+        Vendas = value
+      ),
       by = "date"
     )
     echart_wide_lines(wide, c("Lançamentos", "Vendas"), "Unidades", sp_window())
   })
 
-  trend_card_server(
-    "sp_vso",
-    shiny::reactive(secovi_pick(
-      secovi_data(),
-      sp_sales_var(),
-      "vso_vendas_sobre_oferta"
-    )),
-    "VSO (%)",
-    "VSO mensal",
-    sp_window,
-    title = shiny::reactive(paste0("VSO — ", input$sp_tipologia %||% "Total"))
-  )
-  trend_card_server(
-    "sp_sales",
-    shiny::reactive(secovi_pick(secovi_data(), sp_sales_var(), "unidades")),
-    "Unidades",
-    "Vendas/mês",
-    sp_window,
-    title = shiny::reactive(paste0(
-      "Vendas — ",
-      input$sp_tipologia %||% "Total"
-    ))
-  )
+  sp_rooms <- shiny::reactive(names(SECOVI_ROOMS))
+
+  output$sp_rooms_area <- echarts4r::renderEcharts4r({
+    echart_stacked_area(
+      secovi_rooms_units_12m(secovi_data()),
+      sp_rooms(),
+      "Unidades",
+      sp_window()
+    )
+  })
+  output$sp_rooms_vso <- echarts4r::renderEcharts4r({
+    echart_wide_trends(
+      secovi_rooms_wide(secovi_data(), "vso_vendas_sobre_oferta"),
+      sp_rooms(),
+      "VSO (%) · tendência",
+      sp_window()
+    )
+  })
+  output$sp_rooms_share <- echarts4r::renderEcharts4r({
+    yearly <- secovi_rooms_yearly(secovi_data())
+    # Honor the Período handle: the bar chart has no datazoom, so filter years.
+    w <- sp_window()
+    if (!is.null(w)) {
+      yearly <- dplyr::filter(yearly, year >= lubridate::year(w))
+    }
+    echart_share_bars(rooms_to_shares(yearly), sp_rooms())
+  })
+  output$sp_rooms_table <- shiny::renderUI({
+    secovi_rooms_table(secovi_rooms_yearly(secovi_data()))
+  })
+
   trend_card_server(
     "sp_supply",
     shiny::reactive(secovi_pick(secovi_data(), "supply", "saldo_unidades")),
@@ -1098,27 +1121,15 @@ server <- function(input, output, session) {
     "Estoque",
     sp_window
   )
-  trend_card_server(
-    "sp_default",
-    shiny::reactive(secovi_pick(
-      secovi_data(),
-      "default_condominio",
-      "acao_por_falta_de_pagamento"
-    )),
-    "Ações",
-    "Ações/mês",
-    sp_window
-  )
-
   output$sp_vgv <- echarts4r::renderEcharts4r({
     sec <- secovi_data()
     wide <- dplyr::full_join(
       dplyr::rename(
-        secovi_pick(sec, "launches", "vgv_potencial_em_r_milhoes"),
+        roll_sum(secovi_pick(sec, "launches", "vgv_potencial_em_r_milhoes")),
         Lançamentos = value
       ),
       dplyr::rename(
-        secovi_pick(sec, "sales", "vgv_em_milhoes_de_r"),
+        roll_sum(secovi_pick(sec, "sales", "vgv_em_milhoes_de_r")),
         Vendas = value
       ),
       by = "date"

@@ -44,7 +44,7 @@ tooltip_for <- function(y_name) {
 # zero_line is for variables centered on zero (% changes); index levels skip it.
 # `tooltip_fmt` overrides the y_name-derived number format (see tooltip_for()).
 echart_finish <- function(e, y_name, window_start = NULL, zero_line = TRUE,
-                          tooltip_fmt = tooltip_for(y_name)) {
+                          tooltip_fmt = tooltip_for(y_name), y_min = NULL) {
 
   e <- e |>
     echarts4r::e_tooltip(trigger = "axis", valueFormatter = tooltip_fmt) |>
@@ -55,7 +55,8 @@ echart_finish <- function(e, y_name, window_start = NULL, zero_line = TRUE,
       name         = y_name,
       nameLocation = "middle",
       nameGap      = 45,
-      scale        = TRUE
+      min          = y_min,
+      scale        = is.null(y_min)
     ) |>
     echarts4r::e_toolbox_feature(feature = "saveAsImage")
 
@@ -388,6 +389,85 @@ echart_yearly_bars <- function(df, cols, labels = cols,
       data = list(yAxis = 0),
       lineStyle = list(color = "#333", type = "solid", width = 1),
       symbol = "none", silent = TRUE
+    ) |>
+    echarts4r::e_toolbox_feature(feature = "saveAsImage")
+}
+
+# Stacked area: one filled band per column of a wide date frame (the mix of a
+# total over time). Bands are drawn in `cols` order, bottom to top.
+echart_stacked_area <- function(df, cols, y_name, window_start = NULL) {
+
+  d <- dplyr::arrange(df, date)
+  present <- intersect(cols, names(d))
+  if (length(present) == 0 || nrow(d) == 0) return(echart_empty())
+
+  colors <- get_color_palette(length(present))
+  e <- echarts4r::e_charts(d, date)
+  for (i in seq_along(present)) {
+    e <- echarts4r::e_area_(
+      e, present[i], name = present[i], stack = "total",
+      symbol       = "none",
+      connectNulls = TRUE,
+      lineStyle    = list(width = 1, color = colors[i]),
+      areaStyle    = list(color = colors[i], opacity = 0.75),
+      itemStyle    = list(color = colors[i])
+    )
+  }
+  # Stacked areas must read from a zero baseline, else the band proportions lie.
+  echart_finish(e, y_name, window_start, zero_line = FALSE, y_min = 0)
+}
+
+# Several STL-trend series from a wide df (date + one column per series): each
+# column is reduced to its STL trend and drawn as one bold line — the smoothed
+# counterpart to echart_wide_lines(), without the monthly noise.
+echart_wide_trends <- function(df, cols, y_name, window_start = NULL,
+                               zero_line = FALSE) {
+
+  d <- dplyr::arrange(df, date)
+  present <- intersect(cols, names(d))
+  if (length(present) == 0 || nrow(d) == 0) return(echart_empty())
+
+  for (col in present) d[[col]] <- stl_trend_vec(d[[col]], d$date)
+  if (!any(!is.na(unlist(d[present])))) return(echart_empty())
+
+  echarts4r::e_charts(d, date) |>
+    add_lines(present, get_color_palette(length(present))) |>
+    echart_finish(y_name, window_start, zero_line = zero_line)
+}
+
+# 100% stacked bars: each row (year) normalized so its bands sum to 100. `df`
+# is a wide frame (year + one share column per band, already in percent).
+echart_share_bars <- function(df, cols, labels = cols,
+                              y_name = "Participação (%)") {
+
+  d <- df[order(df$year), , drop = FALSE]
+  present <- intersect(cols, names(d))
+  if (length(present) == 0 || nrow(d) == 0) return(echart_empty())
+  # Drop years with no data (e.g. an in-progress current year).
+  d <- d[rowSums(!is.na(as.matrix(d[present]))) > 0, , drop = FALSE]
+  if (nrow(d) == 0) return(echart_empty())
+  d$year <- as.character(d$year)
+
+  colors <- get_color_palette(length(present))
+  e <- echarts4r::e_charts_(d, "year")
+  for (i in seq_along(present)) {
+    e <- echarts4r::e_bar_(
+      e, present[i], name = labels[match(present[i], cols)], stack = "total",
+      itemStyle = list(color = colors[i])
+    )
+  }
+
+  e |>
+    echarts4r::e_tooltip(
+      trigger = "axis",
+      valueFormatter = tooltip_value_formatter(digits = 1, suffix = "%")
+    ) |>
+    echarts4r::e_legend(top = 0, type = "scroll") |>
+    echarts4r::e_grid(top = 45, bottom = 30) |>
+    echarts4r::e_x_axis(type = "category") |>
+    echarts4r::e_y_axis(
+      name = y_name, nameLocation = "middle", nameGap = 40,
+      min = 0, max = 100
     ) |>
     echarts4r::e_toolbox_feature(feature = "saveAsImage")
 }

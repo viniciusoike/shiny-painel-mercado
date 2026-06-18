@@ -335,13 +335,77 @@ secovi_pick <- function(sec, variable, name = NULL) {
     dplyr::select(date, value)
 }
 
-# Tipologia chip -> sales variable suffix (Secovi splits 1/2/3/4 rooms).
-SECOVI_TIPOLOGIA <- c(
-  "Total"  = "sales",
+# Trailing n-month rolling sum of a sorted date+value frame (monthly series;
+# any NA inside a window yields NA, and the first n-1 rows are NA).
+roll_sum <- function(df, n = 12) {
+  v <- df$value
+  out <- rep(NA_real_, length(v))
+  if (length(v) >= n) {
+    for (i in seq(n, length(v))) out[i] <- sum(v[(i - n + 1):i])
+  }
+  df$value <- out
+  df
+}
+
+# Dormitório label -> Secovi sales variable (the 1/2/3/4-room sales split).
+# Ordered small-to-large so stacked bands and table columns read consistently.
+SECOVI_ROOMS <- c(
   "1 dorm" = "sales_1rooms",
   "2 dorm" = "sales_2rooms",
-  "3 dorm" = "sales_3rooms"
+  "3 dorm" = "sales_3rooms",
+  "4 dorm" = "sales_4rooms"
 )
+
+# Wide date x dormitório frame for one Secovi metric `name` (default the
+# monthly unit count). One column per SECOVI_ROOMS label.
+secovi_rooms_wide <- function(sec, name = "unidades") {
+  cols <- lapply(names(SECOVI_ROOMS), function(lab) {
+    dplyr::rename(secovi_pick(sec, SECOVI_ROOMS[[lab]], name), !!lab := value)
+  })
+  Reduce(function(a, b) dplyr::full_join(a, b, by = "date"), cols) |>
+    dplyr::arrange(date)
+}
+
+# 12-month rolling sum of sales units per dormitório, wide (for the stacked
+# area). Rolls each band on its own so partial leading windows stay NA.
+secovi_rooms_units_12m <- function(sec) {
+  cols <- lapply(names(SECOVI_ROOMS), function(lab) {
+    rolled <- roll_sum(secovi_pick(sec, SECOVI_ROOMS[[lab]], "unidades"))
+    dplyr::rename(rolled, !!lab := value)
+  })
+  Reduce(function(a, b) dplyr::full_join(a, b, by = "date"), cols) |>
+    dplyr::arrange(date)
+}
+
+# Annual sales units per dormitório (year x band, wide). Only complete years
+# (12 monthly observations) are kept so partial years never skew comparisons.
+secovi_rooms_yearly <- function(sec) {
+  parts <- lapply(names(SECOVI_ROOMS), function(lab) {
+    secovi_pick(sec, SECOVI_ROOMS[[lab]], "unidades") |>
+      dplyr::mutate(year = lubridate::year(date)) |>
+      dplyr::group_by(year) |>
+      dplyr::summarise(
+        n = sum(!is.na(value)),
+        value = sum(value, na.rm = TRUE),
+        .groups = "drop"
+      ) |>
+      dplyr::transmute(year, !!lab := ifelse(n == 12, value, NA_real_))
+  })
+  Reduce(function(a, b) dplyr::full_join(a, b, by = "year"), parts) |>
+    dplyr::arrange(year)
+}
+
+# Convert an annual wide frame (year + band cols) to within-year percentage
+# shares (each year's bands sum to 100; all-NA years stay NA).
+rooms_to_shares <- function(df, cols = names(SECOVI_ROOMS)) {
+  present <- intersect(cols, names(df))
+  m <- as.matrix(df[present])
+  tot <- rowSums(m, na.rm = TRUE)
+  tot[tot == 0] <- NA_real_
+  out <- data.frame(year = df$year)
+  out[present] <- round(sweep(m, 1, tot, "/") * 100, 1)
+  out
+}
 
 # BCB / ABRAINC helpers -------------------------------------------------------
 
