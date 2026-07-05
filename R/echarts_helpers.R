@@ -230,10 +230,7 @@ echart_real_nominal <- function(df, ipca, window_start = NULL) {
     echart_finish("Índice (base 100)", window_start, zero_line = FALSE)
 }
 
-echart_palette <- function(n) {
-  if (n <= 5) return(get_color_palette(n))
-  rep_len(pal, n)
-}
+echart_palette <- function(n) get_color_palette(n)
 
 # Panorama charts --------------------------------------------------------------
 

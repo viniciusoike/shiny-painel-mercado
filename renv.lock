@@ -3261,12 +3261,12 @@
     },
     "realestatebr": {
       "Package": "realestatebr",
-      "Version": "1.0.0",
-      "Source": "GitHub",
+      "Version": "1.0.1",
+      "Source": "Repository",
       "Type": "Package",
       "Title": "Import Brazilian Real Estate Data into R",
       "Authors@R": "person( given = \"Vinicius Oike\", family = \"Reginatto\", email = \"viniciusoike@gmail.com\", role = c(\"aut\", \"cre\", \"cph\") )",
-      "Description": "Provides access to Brazilian real estate market data from multiple official sources: the Central Bank of Brazil (BCB) <https://www.bcb.gov.br/>, the Brazilian Association of Real Estate Developers (ABRAINC) <https://abrainc.org.br/>, the Brazilian Association of Real Estate Credit and Savings Entities (ABECIP) <https://www.abecip.org.br/>, the Getulio Vargas Foundation (FGV) <https://portalibre.fgv.br/>, and the Bank for International Settlements (BIS) <https://www.bis.org/>.",
+      "Description": "Provides access to Brazilian real estate market data from multiple official sources: the Central Bank of Brazil (BCB), the Brazilian Association of Real Estate Developers (ABRAINC), the Brazilian Association of Real Estate Credit and Savings Entities (ABECIP), the Getulio Vargas Foundation (FGV), and the Bank for International Settlements (BIS).",
       "License": "MIT + file LICENSE",
       "URL": "https://github.com/viniciusoike/realestatebr, https://viniciusoike.github.io/realestatebr/",
       "BugReports": "https://github.com/viniciusoike/realestatebr/issues",
@@ -3297,7 +3297,6 @@
         "yaml",
         "zoo"
       ],
-      "Roxygen": "list(markdown = TRUE)",
       "Suggests": [
         "geobr",
         "ggplot2",
@@ -3315,14 +3314,10 @@
         "trendseries"
       ],
       "VignetteBuilder": "knitr",
+      "NeedsCompilation": "no",
       "Author": "Vinicius Oike Reginatto [aut, cre, cph]",
       "Maintainer": "Vinicius Oike Reginatto <viniciusoike@gmail.com>",
-      "RemoteType": "github",
-      "RemoteHost": "api.github.com",
-      "RemoteUsername": "viniciusoike",
-      "RemoteRepo": "realestatebr",
-      "RemoteRef": "main",
-      "RemoteSha": "ff7dd42592cbb10d9c99c039a800f3343374c419"
+      "Repository": "CRAN"
     },
     "rematch": {
       "Package": "rematch",

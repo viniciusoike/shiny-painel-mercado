@@ -1,15 +1,16 @@
-# Ekio palette (mockup-brief.md): ordered so get_color_palette() picks
-# blue/orange first, then teal, light blue, green.
-pal <- c("#1E3A5F", "#2B4C7E", "#4A90C2", "#7EB6D8", "#DD6B20",
-         "#D69E2E", "#38A169", "#805AD5", "#2C7A7B")
+# Ekio palette ----------------------------------------------------------------
+
+# Canonical Ekio brand colors, in brand-priority order (blue, orange, teal,
+# gold, purple, ...). These are ekioplot::ekio_pal("full") hardcoded — kept
+# inline so the app doesn't pull ekioplot's ggplot2/gt dependency tree at
+# runtime. get_color_palette() returns the first n (discrete up to 8, then
+# recycled), matching ekio_pal("full", n).
+pal <- c("#1E3A5F", "#DD6B20", "#2C7A7B", "#D69E2E",
+         "#805AD5", "#C53030", "#38A169", "#718096")
 
 get_color_palette <- function(n) {
-  if (n == 1) return(pal[1])
-  if (n == 2) return(pal[c(1, 5)])
-  if (n == 3) return(pal[c(1, 5, 9)])
-  if (n == 4) return(pal[c(1, 3, 5, 9)])
-  if (n == 5) return(pal[c(1, 3, 5, 7, 9)])
-  pal
+  if (n <= length(pal)) return(pal[seq_len(n)])
+  rep_len(pal, n)
 }
 
 # Formatting ------------------------------------------------------------------
