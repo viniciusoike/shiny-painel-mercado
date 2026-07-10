@@ -69,15 +69,6 @@ Rscript tools/deploy.R    # rsconnect::deployApp() bundling the .cache/*.rds see
 
 All data comes from [`realestatebr`](https://github.com/viniciusoike/realestatebr) via a small dataset registry in `R/_setup.R` (`load_dataset(name)`, cached per dataset under `.cache/`):
 
-| Registry name | realestatebr call | Used by |
-|---|---|---|---|
-| `rppi` | `get_dataset("rppi", table = "all")` | Preços (all index sources stacked) |
-| `abecip_sbpe`, `abecip_units` | `get_dataset("abecip", ...)` | Crédito |
-| `abrainc` | `get_dataset("abrainc", table = "indicator")` | Mercado |
-| `bcb_series` | `get_dataset("bcb_series", table = "core")` | Macro / Panorama |
-| `secovi` | `get_dataset("secovi", table = "all")` | São Paulo, Panorama VSO |
-| `bcb_selic` | BCB SGS API (`fetch_bcb_sgs(432)`) | Panorama (Selic — not in `realestatebr`) |
-
 ## Dashboard Sections
 
 | Tab | Contents |
