@@ -1,10 +1,15 @@
 # Painel do Mercado Imobiliário
 
-Interactive R Shiny dashboard for Brazilian residential real estate market indices.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![R 4.x](https://img.shields.io/badge/R-4.x-276DC3?logo=r)](https://www.r-project.org/)
+
+Interactive R Shiny dashboard for Brazilian residential real estate market indices — prices, credit, primary market, macro, and São Paulo housing indicators.
+
+<img src="static/images/print_prices.png" alt="Dashboard screenshot" width="700">
 
 ## Features
 
-- **Ekio sidebar shell** — six dashboard sections (Panorama, Preços, Crédito, Mercado, Macro, São Paulo) behind a branded sidebar; design template in `mockup.html`
+- **Ekio sidebar shell** — six dashboard sections (Panorama, Preços, Crédito, Mercado, Macro, São Paulo) behind a branded sidebar
 - **Índices de Preços (RPPI)** — monthly rent and sale price indices across Brazilian cities, sourced via [`realestatebr`](https://github.com/viniciusoike/realestatebr)
 - **STL trend overlay** — decomposed trend component shown as a dashed line on the index chart
 - **Disk cache** — data is cached locally on first load; the deployed app is read-only over a pre-warmed cache (refreshed by redeploy, see [Deployment](#deployment))
@@ -20,16 +25,15 @@ renv::restore()
 shiny::runApp()
 ```
 
-`renv::restore()` installs the exact versions in `renv.lock`, including
-`realestatebr` from GitHub. To set up manually instead:
+`renv::restore()` installs the exact versions in `renv.lock`. To set up manually instead:
 
 ```r
 install.packages(c("shiny", "bslib", "brand.yml", "echarts4r", "dplyr",
-                   "tidyr", "lubridate", "here", "jsonlite", "curl"))
-remotes::install_github("viniciusoike/realestatebr")
+                   "tidyr", "lubridate", "here", "jsonlite", "curl",
+                   "realestatebr"))
 ```
 
-Network access is required on first run to fetch RPPI data. Subsequent runs use the local cache at `.cache/rppi.rds`.
+Network access is required on first run to fetch market data. Subsequent runs use the local cache under `.cache/`.
 
 ## Deployment
 
@@ -40,7 +44,7 @@ Rscript tools/prewarm.R   # force-fetch every dataset into .cache/*.rds (fresh s
 Rscript tools/deploy.R    # rsconnect::deployApp() bundling the .cache/*.rds seed
 ```
 
-`tools/deploy.R` lists `appFiles` explicitly, so the cache ships in the bundle and dev-only files (mockup, analysis scripts) are excluded. Fresh data reaches the live app only via a redeploy.
+`tools/deploy.R` lists `appFiles` explicitly, so the cache ships in the bundle and dev-only files (analysis scripts, etc.) are excluded. Fresh data reaches the live app only via a redeploy.
 
 ## Project Structure
 
@@ -48,13 +52,15 @@ Rscript tools/deploy.R    # rsconnect::deployApp() bundling the .cache/*.rds see
 ├── app.R                   # Shiny entry point (UI + server)
 ├── renv.lock               # Pinned dependency versions (renv)
 ├── _brand.yml              # Ekio brand (colors, typography)
-├── styles.css              # Mockup-derived CSS (sidebar, page chrome)
-├── mockup.html             # Static design template for the dashboard
-├── mockup-brief.md         # Concept brief / design principles
+├── styles.css              # Dashboard CSS (sidebar, page chrome)
+├── static/                 # Static assets (screenshots)
 ├── R/
 │   ├── _setup.R            # Data loading, caching, STL decomposition
 │   ├── echarts_helpers.R   # echarts4r chart wrappers
-│   └── utils.R             # Color palette utilities
+│   └── utils.R             # Color palette, kpi cards, formatting
+├── tools/
+│   ├── prewarm.R           # Force-fetch all data into cache
+│   └── deploy.R            # Deploy to Posit Connect
 └── analysis/               # Exploratory / WIP scripts (not loaded by app)
     ├── plot_secovi.R       # Secovi-SP ggplot2 charts
     └── prep_secovi.R       # Secovi-SP data preparation (draft)
@@ -65,22 +71,21 @@ Rscript tools/deploy.R    # rsconnect::deployApp() bundling the .cache/*.rds see
 All data comes from [`realestatebr`](https://github.com/viniciusoike/realestatebr) via a small dataset registry in `R/_setup.R` (`load_dataset(name)`, cached per dataset under `.cache/`):
 
 | Registry name | realestatebr call | Used by |
-|---|---|---|
+|---|---|---|---|
 | `rppi` | `get_dataset("rppi", table = "all")` | Preços (all index sources stacked) |
-| `abecip_sbpe`, `abecip_units` | `get_dataset("abecip", ...)` | Crédito (planned) |
-| `abrainc` | `get_dataset("abrainc", table = "indicator")` | Mercado (planned) |
-| `bcb_series` | `get_dataset("bcb_series", table = "core")` | Macro / Panorama (planned) |
-| `secovi` | `get_dataset("secovi", table = "all")` | São Paulo (planned), Panorama VSO |
+| `abecip_sbpe`, `abecip_units` | `get_dataset("abecip", ...)` | Crédito |
+| `abrainc` | `get_dataset("abrainc", table = "indicator")` | Mercado |
+| `bcb_series` | `get_dataset("bcb_series", table = "core")` | Macro / Panorama |
+| `secovi` | `get_dataset("secovi", table = "all")` | São Paulo, Panorama VSO |
 | `bcb_selic` | BCB SGS API (`fetch_bcb_sgs(432)`) | Panorama (Selic — not in `realestatebr`) |
 
-## Roadmap
+## Dashboard Sections
 
-- [x] Ekio sidebar shell with six sections (mockup.html)
-- [x] Preços tab: index + variation pairs, city comparison, summary table, real vs. nominal (IPCA)
-- [x] Panorama tab: 8 KPI cards with sparklines + trend / real-rate / SBPE-volume charts
-- [x] Crédito tab (Abecip / BCB): volume, units, rate, delinquency
-- [x] Mercado tab (Abrainc): launches/sales/supply/distratos/deliveries/VGV by segment
-- [x] Macro tab (BCB): Selic, inflation, real rate, financing rate, debt burden, delinquency
-- [x] São Paulo tab (Secovi-SP): launches vs. sales, VSO, supply, VGV, condo defaults by typology
-- [x] Polish: `trend_card` Shiny module to DRY the dense-tab charts
-- [x] `renv` lockfile for reproducible deployment
+| Tab | Contents |
+|---|---|
+| **Panorama** | Executive summary — Selic × IPCA real rate, SBPE credit volume, FipeZap city trends, 8 KPI cards with sparklines |
+| **Preços** | Nation and city-level price indices (IGMI-R, INCC, IPCA, IGP-M, IVAR, FipeZap), STL trend overlay, real vs. nominal, yearly accumulation |
+| **Crédito** | SBPE credit volume and units, financing rate, delinquency (Abecip / BCB) |
+| **Mercado** | Primary market launches, sales, supply, distratos, deliveries, VGV by segment (Abrainc) |
+| **Macro** | Selic, IPCA, IGP-M, INCC, real interest rate, debt burden, delinquency (BCB) |
+| **São Paulo** | Secovi-SP: launches vs. sales, VSO, supply, VGV, months of inventory, dormitório composition |

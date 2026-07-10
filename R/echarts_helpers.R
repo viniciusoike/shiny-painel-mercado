@@ -1,3 +1,6 @@
+# Copyright (c) 2024 Vinicius Oike Reginatto
+# SPDX-License-Identifier: MIT
+
 library(echarts4r)
 
 source(here::here("R", "utils.R"))

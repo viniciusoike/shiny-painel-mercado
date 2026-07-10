@@ -1,3 +1,6 @@
+# Copyright (c) 2024 Vinicius Oike Reginatto
+# SPDX-License-Identifier: MIT
+
 library(realestatebr)
 library(dplyr)
 library(tidyr)
