@@ -8,15 +8,6 @@ Interactive R Shiny dashboard for Brazilian residential real estate market indic
 
 <img src="static/images/print_prices.png" alt="Dashboard screenshot" width="700">
 
-## Features
-
-- **Ekio sidebar shell** — six dashboard sections (Panorama, Preços, Crédito, Mercado, Macro, São Paulo) behind a branded sidebar
-- **Índices de Preços (RPPI)** — monthly rent and sale price indices across Brazilian cities, sourced via [`realestatebr`](https://github.com/viniciusoike/realestatebr)
-- **STL trend overlay** — decomposed trend component shown as a dashed line on the index chart
-- **Disk cache** — data is cached locally on first load; the deployed app is read-only over a pre-warmed cache (refreshed by redeploy, see [Deployment](#deployment))
-- **brand.yml theming** — Bootstrap 5 UI themed from `_brand.yml` (Ekio colors and typography)
-## Running Locally
-
 ```r
 # Dependencies are pinned with renv; restore them on first clone
 renv::restore()
@@ -45,26 +36,6 @@ Rscript tools/deploy.R    # rsconnect::deployApp() bundling the .cache/*.rds see
 ```
 
 `tools/deploy.R` lists `appFiles` explicitly, so the cache ships in the bundle and dev-only files (analysis scripts, etc.) are excluded. Fresh data reaches the live app only via a redeploy.
-
-## Project Structure
-
-```
-├── app.R                   # Shiny entry point (UI + server)
-├── renv.lock               # Pinned dependency versions (renv)
-├── _brand.yml              # Ekio brand (colors, typography)
-├── styles.css              # Dashboard CSS (sidebar, page chrome)
-├── static/                 # Static assets (screenshots)
-├── R/
-│   ├── _setup.R            # Data loading, caching, STL decomposition
-│   ├── echarts_helpers.R   # echarts4r chart wrappers
-│   └── utils.R             # Color palette, kpi cards, formatting
-├── tools/
-│   ├── prewarm.R           # Force-fetch all data into cache
-│   └── deploy.R            # Deploy to Posit Connect
-└── analysis/               # Exploratory / WIP scripts (not loaded by app)
-    ├── plot_secovi.R       # Secovi-SP ggplot2 charts
-    └── prep_secovi.R       # Secovi-SP data preparation (draft)
-```
 
 ## Data Sources
 
