@@ -14,7 +14,6 @@ Interactive R Shiny dashboard for Brazilian residential real estate market indic
 - **STL trend overlay** — decomposed trend component shown as a dashed line on the index chart
 - **Disk cache** — data is cached locally on first load; the deployed app is read-only over a pre-warmed cache (refreshed by redeploy, see [Deployment](#deployment))
 - **brand.yml theming** — Bootstrap 5 UI themed from `_brand.yml` (Ekio colors and typography)
-
 ## Running Locally
 
 ```r
