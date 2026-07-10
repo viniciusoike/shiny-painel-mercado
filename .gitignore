@@ -51,3 +51,11 @@ rsconnect/
 
 data/
 .cache/
+.positai
+
+# macOS
+.DS_Store
+
+# Posit Connect deployment artifacts
+.posit/
+manifest.json

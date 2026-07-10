@@ -1,15 +1,16 @@
-# Ekio palette (mockup-brief.md): ordered so get_color_palette() picks
-# blue/orange first, then teal, light blue, green.
-pal <- c("#1E3A5F", "#2B4C7E", "#4A90C2", "#7EB6D8", "#DD6B20",
-         "#D69E2E", "#38A169", "#805AD5", "#2C7A7B")
+# Ekio palette ----------------------------------------------------------------
+
+# Canonical Ekio brand colors, in brand-priority order (blue, orange, teal,
+# gold, purple, ...). These are ekioplot::ekio_pal("full") hardcoded — kept
+# inline so the app doesn't pull ekioplot's ggplot2/gt dependency tree at
+# runtime. get_color_palette() returns the first n (discrete up to 8, then
+# recycled), matching ekio_pal("full", n).
+pal <- c("#1E3A5F", "#DD6B20", "#2C7A7B", "#D69E2E",
+         "#805AD5", "#C53030", "#38A169", "#718096")
 
 get_color_palette <- function(n) {
-  if (n == 1) return(pal[1])
-  if (n == 2) return(pal[c(1, 5)])
-  if (n == 3) return(pal[c(1, 5, 9)])
-  if (n == 4) return(pal[c(1, 3, 5, 9)])
-  if (n == 5) return(pal[c(1, 3, 5, 7, 9)])
-  pal
+  if (n <= length(pal)) return(pal[seq_len(n)])
+  rep_len(pal, n)
 }
 
 # Formatting ------------------------------------------------------------------
@@ -121,6 +122,60 @@ yearly_accum_table <- function(df) {
             num_cell(d$ipca[i]),
             num_cell(d$igmi[i]),
             num_cell(d$ivar[i])
+          )
+        })
+      )
+    )
+  )
+}
+
+# Secovi dormitório table ------------------------------------------------------
+
+# Annual sales units per dormitório (Ano | 1..4 dorm | Total | Δ a/a), most
+# recent year first. `df` is the wide frame from secovi_rooms_yearly(); the
+# trend column is the year-over-year % change of the Total. NA cells show "—".
+secovi_rooms_table <- function(df, cols = c("1 dorm", "2 dorm", "3 dorm", "4 dorm")) {
+  if (is.null(df) || nrow(df) == 0) return(shiny::p("Sem dados."))
+  present <- intersect(cols, names(df))
+  if (length(present) == 0) return(shiny::p("Sem dados."))
+
+  d <- df[order(df$year), , drop = FALSE]
+  d$Total <- rowSums(as.matrix(d[present]), na.rm = TRUE)
+  d$Total[rowSums(!is.na(as.matrix(d[present]))) == 0] <- NA_real_
+  d$yoy <- c(NA_real_, d$Total[-1] / d$Total[-nrow(d)] - 1)
+  # Drop years with no complete data (Total is NA), then most-recent-first.
+  d <- d[!is.na(d$Total), , drop = FALSE]
+  d <- d[order(d$year, decreasing = TRUE), , drop = FALSE]
+  if (nrow(d) == 0) return(shiny::p("Sem dados."))
+
+  num_cell <- function(x) {
+    if (is.na(x)) return(shiny::tags$td(class = "num", "—"))
+    shiny::tags$td(class = "num", fmt_num_br(x, 0))
+  }
+  yoy_cell <- function(x) {
+    cls <- if (is.na(x) || x >= 0) "num positive" else "num negative"
+    shiny::tags$td(class = cls, fmt_pct_br(x, 1))
+  }
+
+  shiny::div(
+    class = "table-scroll",
+    shiny::tags$table(
+      class = "mini-table",
+      shiny::tags$thead(
+        shiny::tags$tr(
+          shiny::tags$th("Ano"),
+          lapply(present, function(c) shiny::tags$th(class = "num", c)),
+          shiny::tags$th(class = "num", "Total"),
+          shiny::tags$th(class = "num", "Δ a/a")
+        )
+      ),
+      shiny::tags$tbody(
+        lapply(seq_len(nrow(d)), function(i) {
+          shiny::tags$tr(
+            shiny::tags$td(d$year[i]),
+            lapply(present, function(c) num_cell(d[[c]][i])),
+            num_cell(d$Total[i]),
+            yoy_cell(d$yoy[i])
           )
         })
       )

@@ -5,7 +5,7 @@ library(bslib)
 library(echarts4r)
 library(dplyr)
 library(here)
-
+options(bslib.color_contrast_warnings = FALSE)
 source(here::here("R", "utils.R"))
 source(here::here("R", "_setup.R"))
 source(here::here("R", "echarts_helpers.R"))
@@ -130,7 +130,7 @@ page_panorama <- shiny::tagList(
   bslib::layout_columns(
     col_widths = c(7, 5),
     chart_card(
-      "Preço de Venda — Tendência (RPPI)",
+      "Preço de Venda — Tendência (FipeZap)",
       "STL trend",
       output_id = "pan_trend",
       height = "300px"
@@ -342,10 +342,10 @@ page_mercado <- shiny::tagList(
   ),
   bslib::layout_columns(
     col_widths = c(6, 6),
-    trend_card_ui("mkt_delivered", "Entregas de Unidades", "unidades/mês"),
+    trend_card_ui("mkt_delivered", "Entregas de Unidades — Total", "unidades/mês"),
     chart_card(
-      "VGV — Lançamentos vs. Vendas",
-      "R$ milhões",
+      "VGV — Lançamentos vs. Vendas — Total",
+      "R$ milhões · soma 12m",
       output_id = "mkt_vgv",
       height = "260px"
     )
@@ -407,17 +407,6 @@ page_saopaulo <- shiny::tagList(
   shiny::div(
     class = "filter-bar",
     filter_group(
-      "Tipologia",
-      class = "filter-chips",
-      shiny::radioButtons(
-        "sp_tipologia",
-        NULL,
-        inline = TRUE,
-        choices = names(SECOVI_TIPOLOGIA),
-        selected = "Total"
-      )
-    ),
-    filter_group(
       "Período",
       style = "margin-left:auto;",
       shiny::selectInput(
@@ -434,26 +423,59 @@ page_saopaulo <- shiny::tagList(
     col_widths = c(6, 6),
     chart_card(
       "Lançamentos vs. Vendas",
-      "unidades/mês",
+      "unidades · soma 12m",
       output_id = "sp_launch_sales",
       height = "260px"
     ),
-    trend_card_ui("sp_vso", NULL, "% · VSO")
-  ),
-  bslib::layout_columns(
-    col_widths = c(6, 6),
-    trend_card_ui("sp_sales", NULL, "unidades/mês"),
-    trend_card_ui("sp_supply", "Oferta — Saldo de Unidades", "estoque")
+    chart_card(
+      "VGV — Lançamentos vs. Vendas",
+      "R$ milhões · soma 12m",
+      output_id = "sp_vgv",
+      height = "260px"
+    )
   ),
   bslib::layout_columns(
     col_widths = c(6, 6),
     chart_card(
-      "VGV — Lançamentos vs. Vendas",
-      "R$ milhões",
-      output_id = "sp_vgv",
+      "Vendas por Dormitório",
+      "unidades · soma 12m",
+      output_id = "sp_rooms_area",
       height = "260px"
     ),
-    trend_card_ui("sp_default", "Inadimplência Condominial", "ações/mês")
+    chart_card(
+      "VSO por Dormitório",
+      "% · tendência STL",
+      output_id = "sp_rooms_vso",
+      height = "260px"
+    )
+  ),
+  bslib::layout_columns(
+    col_widths = c(7, 5),
+    chart_card(
+      "Participação por Dormitório",
+      "% · vendas/ano",
+      output_id = "sp_rooms_share",
+      height = "300px"
+    ),
+    bslib::card(
+      full_screen = TRUE,
+      bslib::card_header(
+        class = "chart-card-header",
+        shiny::span("Vendas Anuais por Dormitório"),
+        shiny::span(class = "chart-tag", "unidades · soma anual")
+      ),
+      bslib::card_body(class = "p-0", shiny::uiOutput("sp_rooms_table"))
+    )
+  ),
+  bslib::layout_columns(
+    col_widths = c(6, 6),
+    trend_card_ui("sp_supply", "Oferta — Saldo de Unidades", "estoque"),
+    chart_card(
+      "Meses de Estoque",
+      "oferta ÷ média de vendas 12m",
+      output_id = "sp_estoque_meses",
+      height = "260px"
+    )
   )
 )
 
@@ -466,8 +488,9 @@ page_sobre <- shiny::tagList(
       "Este painel reúne os principais indicadores do mercado imobiliário",
       " brasileiro em um único lugar. Diferente de fontes tradicionais que",
       " mostram dados brutos, aqui cada série é tratada estatisticamente:",
-      " extraímos tendências, dessazonalizamos, e apresentamos a informação",
-      " de forma que ela seja imediatamente útil para análise."
+      " extraímos tendências via decomposição STL, calculamos acumulações",
+      " de 12 meses e somas móveis, e indicamos explicitamente as",
+      " diferenças metodológicas entre fontes."
     ),
     shiny::h3("Fontes de Dados"),
     shiny::div(
@@ -475,8 +498,8 @@ page_sobre <- shiny::tagList(
       about_card(
         "RPPI — Índices de Preços",
         paste0(
-          "Compilação de todos os índices de preços residenciais disponíveis: ",
-          "FipeZAP, IVG-R (BCB), IVAR (FGV) e índices regionais."
+          "Compilação de índices de preços residenciais: ",
+          "FipeZAP, IVG-R (BCB), IVAR (FGV) e IGMI-R — todos para o Brasil."
         )
       ),
       about_card(
@@ -496,15 +519,15 @@ page_sobre <- shiny::tagList(
       about_card(
         "Banco Central — Séries Macro",
         paste0(
-          "Indicadores macroeconômicos (Selic, IPCA, IGP-M, PIB, emprego) ",
-          "e métricas agregadas de crédito imobiliário."
+          "Indicadores macroeconômicos (Selic, IPCA, IGP-M, INCC) ",
+          "e métricas de crédito imobiliário."
         )
       ),
       about_card(
         "Secovi-SP — São Paulo",
         paste0(
           "Dados detalhados do mercado paulistano: lançamentos, vendas, ",
-          "VSO, estoque e inadimplência condominial."
+          "VSO, estoque e composição por dormitório."
         )
       ),
       about_card(
@@ -519,10 +542,10 @@ page_sobre <- shiny::tagList(
     shiny::p(
       "Todas as séries temporais passam por decomposição STL (Seasonal and",
       " Trend decomposition using Loess) para extração de tendência.",
-      " Variações são calculadas sobre dados dessazonalizados quando",
-      " disponíveis. Comparações entre fontes respeitam diferenças",
-      " metodológicas — não misturamos séries com bases distintas sem",
-      " indicação explícita."
+      " Variações são apresentadas como acumulados de 12 meses ou somas",
+      " móveis de 12 meses para remover ruído sazonal. Comparações entre",
+      " fontes respeitam diferenças metodológicas — não misturamos séries",
+      " com bases distintas sem indicação explícita."
     ),
     shiny::h3("EKIO"),
     shiny::p(
@@ -957,41 +980,52 @@ server <- function(input, output, session) {
       )
     }
 
-    # 6. Crédito SBPE (R$ bi, currency_total is in R$ million)
-    cred <- sbpe_units()
-    cv <- tail2(cred, "currency_total")
+    # 6. Crédito SBPE — trailing 12-month sum, R$ bi (removes seasonal noise)
+    cred_roll <- roll_sum(dplyr::transmute(
+      dplyr::arrange(dplyr::filter(sbpe_units(), !is.na(currency_total)), date),
+      date,
+      value = currency_total / 1000
+    ))
+    cred_v <- cred_roll$value
+    cred_curr <- utils::tail(cred_v[!is.na(cred_v)], 1)
+    last_cred <- suppressWarnings(max(which(!is.na(cred_v))))
+    cred_prev <- if (
+      is.finite(last_cred) && last_cred - 12 >= 1 && !is.na(cred_v[last_cred - 12])
+    ) cred_v[last_cred - 12] else NA_real_
+    cred_yoy <- if (!is.na(cred_curr) && !is.na(cred_prev) && cred_prev != 0) {
+      (cred_curr / cred_prev - 1) * 100
+    } else NA_real_
     cred_card <- kpi_card(
       "Crédito SBPE",
-      paste0("R$ ", fmt_num_br(utils::tail(cv, 1) / 1000, 1), " bi"),
-      {
-        d <- (cv[2] / cv[1] - 1) * 100
-        if (length(cv) < 2 || is.na(d)) {
-          "—"
-        } else {
-          sub("\\.", ",", sprintf("%+.1f%%", d))
-        }
-      },
-      "mensal",
-      dplyr::filter(cred, !is.na(currency_total))$currency_total / 1000,
+      paste0("R$ ", fmt_num_br(cred_curr, 1), " bi"),
+      if (is.na(cred_yoy)) "—" else sub("\\.", ",", sprintf("%+.1f%%", cred_yoy)),
+      "soma 12m",
+      cred_v,
       color = "purple",
-      dir = if (length(cv) == 2 && cv[2] >= cv[1]) "up" else "down"
+      dir = if (!is.na(cred_yoy) && cred_yoy >= 0) "up" else "down"
     )
 
-    # 7. VSO São Paulo
-    vso <- dplyr::filter(
-      secovi_data(),
-      name == "vso_vendas_sobre_oferta",
-      variable == "sales"
-    )
-    vv <- tail2(vso, "value")
+    # 7. VSO São Paulo — 12-month mean (VSO is a ratio; don't sum)
+    vso_roll <- roll_mean(dplyr::select(
+      dplyr::arrange(dplyr::filter(
+        secovi_data(), name == "vso_vendas_sobre_oferta", variable == "sales"
+      ), date),
+      date, value
+    ))
+    vso_v <- vso_roll$value
+    vso_curr <- utils::tail(vso_v[!is.na(vso_v)], 1)
+    last_vso <- suppressWarnings(max(which(!is.na(vso_v))))
+    vso_prev <- if (
+      is.finite(last_vso) && last_vso - 12 >= 1 && !is.na(vso_v[last_vso - 12])
+    ) vso_v[last_vso - 12] else NA_real_
     vso_card <- kpi_card(
       "VSO São Paulo",
-      paste0(fmt_num_br(utils::tail(vv, 1), 1), "%"),
-      pp_lbl(diff(vv)),
-      "mensal",
-      dplyr::arrange(vso, date)$value,
+      paste0(fmt_num_br(vso_curr, 1), "%"),
+      pp_lbl(vso_curr - vso_prev),
+      "média 12m",
+      vso_v,
       color = "amber",
-      dir = pp_dir(diff(vv))
+      dir = pp_dir(vso_curr - vso_prev)
     )
 
     # 8. Inadimplência (crédito direcionado PF)
@@ -1002,10 +1036,10 @@ server <- function(input, output, session) {
       dplyr::arrange(date)
     iv <- utils::tail(inad$value, 2)
     inad_card <- kpi_card(
-      "Inadimplência",
+      "Inadimplência PF",
       paste0(fmt_num_br(utils::tail(iv, 1), 2), "%"),
       pp_lbl(diff(iv)),
-      "crédito PF",
+      "crédito direcionado",
       inad$value,
       color = "red",
       dir = pp_dir(diff(iv))
@@ -1051,46 +1085,53 @@ server <- function(input, output, session) {
     max(secovi_data()$date, na.rm = TRUE) %m-% lubridate::years(yrs)
   })
 
-  sp_sales_var <- shiny::reactive({
-    unname(SECOVI_TIPOLOGIA[input$sp_tipologia %||% "Total"])
-  })
-
   output$sp_launch_sales <- echarts4r::renderEcharts4r({
     sec <- secovi_data()
     wide <- dplyr::full_join(
       dplyr::rename(
-        secovi_pick(sec, "launches", "unidades"),
+        roll_sum(secovi_pick(sec, "launches", "unidades")),
         Lançamentos = value
       ),
-      dplyr::rename(secovi_pick(sec, "sales", "unidades"), Vendas = value),
+      dplyr::rename(
+        roll_sum(secovi_pick(sec, "sales", "unidades")),
+        Vendas = value
+      ),
       by = "date"
     )
     echart_wide_lines(wide, c("Lançamentos", "Vendas"), "Unidades", sp_window())
   })
 
-  trend_card_server(
-    "sp_vso",
-    shiny::reactive(secovi_pick(
-      secovi_data(),
-      sp_sales_var(),
-      "vso_vendas_sobre_oferta"
-    )),
-    "VSO (%)",
-    "VSO mensal",
-    sp_window,
-    title = shiny::reactive(paste0("VSO — ", input$sp_tipologia %||% "Total"))
-  )
-  trend_card_server(
-    "sp_sales",
-    shiny::reactive(secovi_pick(secovi_data(), sp_sales_var(), "unidades")),
-    "Unidades",
-    "Vendas/mês",
-    sp_window,
-    title = shiny::reactive(paste0(
-      "Vendas — ",
-      input$sp_tipologia %||% "Total"
-    ))
-  )
+  sp_rooms <- shiny::reactive(names(SECOVI_ROOMS))
+
+  output$sp_rooms_area <- echarts4r::renderEcharts4r({
+    echart_stacked_area(
+      secovi_rooms_units_12m(secovi_data()),
+      sp_rooms(),
+      "Unidades",
+      sp_window()
+    )
+  })
+  output$sp_rooms_vso <- echarts4r::renderEcharts4r({
+    echart_wide_trends(
+      secovi_rooms_wide(secovi_data(), "vso_vendas_sobre_oferta"),
+      sp_rooms(),
+      "VSO (%) · tendência",
+      sp_window()
+    )
+  })
+  output$sp_rooms_share <- echarts4r::renderEcharts4r({
+    yearly <- secovi_rooms_yearly(secovi_data())
+    # Honor the Período handle: the bar chart has no datazoom, so filter years.
+    w <- sp_window()
+    if (!is.null(w)) {
+      yearly <- dplyr::filter(yearly, year >= lubridate::year(w))
+    }
+    echart_share_bars(rooms_to_shares(yearly), sp_rooms())
+  })
+  output$sp_rooms_table <- shiny::renderUI({
+    secovi_rooms_table(secovi_rooms_yearly(secovi_data()))
+  })
+
   trend_card_server(
     "sp_supply",
     shiny::reactive(secovi_pick(secovi_data(), "supply", "saldo_unidades")),
@@ -1098,27 +1139,38 @@ server <- function(input, output, session) {
     "Estoque",
     sp_window
   )
-  trend_card_server(
-    "sp_default",
-    shiny::reactive(secovi_pick(
-      secovi_data(),
-      "default_condominio",
-      "acao_por_falta_de_pagamento"
-    )),
-    "Ações",
-    "Ações/mês",
-    sp_window
-  )
 
+  # Meses de Estoque: supply saldo / trailing 12m mean of monthly sales units.
+  # The first 11 months of the rolling mean window are NA by construction.
+  sp_estoque_meses_df <- shiny::reactive({
+    sec <- secovi_data()
+    supply <- secovi_pick(sec, "supply", "saldo_unidades")
+    sales_mean <- roll_mean(secovi_pick(sec, "sales", "unidades"))
+    dplyr::inner_join(
+      dplyr::rename(supply, supply_val = value),
+      dplyr::rename(sales_mean, sales_12m = value),
+      by = "date"
+    ) |>
+      dplyr::transmute(date, value = supply_val / sales_12m)
+  })
+  output$sp_estoque_meses <- echarts4r::renderEcharts4r({
+    echart_trend_single(
+      sp_estoque_meses_df(),
+      "Meses",
+      "Mensal",
+      sp_window(),
+      tooltip_fmt = tooltip_value_formatter(digits = 1)
+    )
+  })
   output$sp_vgv <- echarts4r::renderEcharts4r({
     sec <- secovi_data()
     wide <- dplyr::full_join(
       dplyr::rename(
-        secovi_pick(sec, "launches", "vgv_potencial_em_r_milhoes"),
+        roll_sum(secovi_pick(sec, "launches", "vgv_potencial_em_r_milhoes")),
         Lançamentos = value
       ),
       dplyr::rename(
-        secovi_pick(sec, "sales", "vgv_em_milhoes_de_r"),
+        roll_sum(secovi_pick(sec, "sales", "vgv_em_milhoes_de_r")),
         Vendas = value
       ),
       by = "date"
@@ -1227,13 +1279,18 @@ server <- function(input, output, session) {
     ab <- abrainc_data()
     wide <- dplyr::full_join(
       dplyr::rename(
-        abrainc_pick(ab, "value", "new_units"),
+        roll_sum(abrainc_pick(ab, "value", "new_units")),
         Lançamentos = value
       ),
-      dplyr::rename(abrainc_pick(ab, "value", "sale"), Vendas = value),
+      dplyr::rename(
+        roll_sum(abrainc_pick(ab, "value", "sale")),
+        Vendas = value
+      ),
       by = "date"
     )
-    echart_wide_lines(wide, c("Lançamentos", "Vendas"), "R$ milhões", mkt_win())
+    echart_wide_lines(
+      wide, c("Lançamentos", "Vendas"), "R$ milhões · soma 12m", mkt_win()
+    )
   })
 
   # Macro (BCB) ----
