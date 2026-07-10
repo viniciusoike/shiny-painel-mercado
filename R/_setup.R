@@ -347,6 +347,18 @@ roll_sum <- function(df, n = 12) {
   df
 }
 
+# Trailing n-month rolling mean of a sorted date+value frame. The first n-1
+# rows are NA (no partial-window means); later NAs are preserved.
+roll_mean <- function(df, n = 12) {
+  v <- df$value
+  out <- rep(NA_real_, length(v))
+  if (length(v) >= n) {
+    for (i in seq(n, length(v))) out[i] <- mean(v[(i - n + 1):i])
+  }
+  df$value <- out
+  df
+}
+
 # Dormitório label -> Secovi sales variable (the 1/2/3/4-room sales split).
 # Ordered small-to-large so stacked bands and table columns read consistently.
 SECOVI_ROOMS <- c(

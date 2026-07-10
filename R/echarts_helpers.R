@@ -319,9 +319,12 @@ echart_volume_trend <- function(df, value_col, y_name = "R$ bilhões",
 }
 
 # Single monthly series: faint raw line + bold STL trend (the Secovi pattern).
-# `df` has columns date + value.
+# `df` has columns date + value. `tooltip_fmt = NULL` falls back to the
+# y_name-derived formatter from tooltip_for(); pass an explicit formatter to
+# override (e.g. for "Meses" which needs 1 decimal but no % suffix).
 echart_trend_single <- function(df, y_name, raw_name = "Mensal",
-                                window_start = NULL, zero_line = FALSE) {
+                                window_start = NULL, zero_line = FALSE,
+                                tooltip_fmt = NULL) {
 
   d <- df |>
     dplyr::filter(!is.na(value)) |>
@@ -348,7 +351,8 @@ echart_trend_single <- function(df, y_name, raw_name = "Mensal",
     )
   }
 
-  echart_finish(out, y_name, window_start, zero_line = zero_line)
+  fmt <- if (is.null(tooltip_fmt)) tooltip_for(y_name) else tooltip_fmt
+  echart_finish(out, y_name, window_start, zero_line = zero_line, tooltip_fmt = fmt)
 }
 
 # Grouped (dodged) yearly bars: a category x-axis of years with one bar series
