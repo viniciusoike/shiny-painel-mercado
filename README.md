@@ -2,14 +2,6 @@
 
 Interactive R Shiny dashboard for Brazilian residential real estate market indices.
 
-## Features
-
-- **Ekio sidebar shell** — six dashboard sections (Panorama, Preços, Crédito, Mercado, Macro, São Paulo) behind a branded sidebar; design template in `mockup.html`
-- **Índices de Preços (RPPI)** — monthly rent and sale price indices across Brazilian cities, sourced via [`realestatebr`](https://github.com/viniciusoike/realestatebr)
-- **STL trend overlay** — decomposed trend component shown as a dashed line on the index chart
-- **Disk cache** — data is cached locally on first load; the deployed app is read-only over a pre-warmed cache (refreshed by redeploy, see [Deployment](#deployment))
-- **brand.yml theming** — Bootstrap 5 UI themed from `_brand.yml` (Ekio colors and typography)
-
 ## Running Locally
 
 ```r
@@ -75,12 +67,8 @@ All data comes from [`realestatebr`](https://github.com/viniciusoike/realestateb
 
 ## Roadmap
 
-- [x] Ekio sidebar shell with six sections (mockup.html)
-- [x] Preços tab: index + variation pairs, city comparison, summary table, real vs. nominal (IPCA)
 - [x] Panorama tab: 8 KPI cards with sparklines + trend / real-rate / SBPE-volume charts
 - [x] Crédito tab (Abecip / BCB): volume, units, rate, delinquency
 - [x] Mercado tab (Abrainc): launches/sales/supply/distratos/deliveries/VGV by segment
 - [x] Macro tab (BCB): Selic, inflation, real rate, financing rate, debt burden, delinquency
-- [x] São Paulo tab (Secovi-SP): launches vs. sales, VSO, supply, VGV, condo defaults by typology
 - [x] Polish: `trend_card` Shiny module to DRY the dense-tab charts
-- [x] `renv` lockfile for reproducible deployment
