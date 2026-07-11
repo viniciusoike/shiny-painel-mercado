@@ -422,6 +422,24 @@ page_saopaulo <- shiny::tagList(
     )
   ),
 
+  shiny::uiOutput("sp_kpi_grid"),
+
+  bslib::layout_columns(
+    col_widths = c(6, 6),
+    chart_card(
+      "IGMI-R — Venda",
+      "acum. 12m % · São Paulo vs. Brasil",
+      output_id = "sp_igmir_chart",
+      height = "260px"
+    ),
+    chart_card(
+      "IVAR — Aluguel",
+      "acum. 12m % · São Paulo vs. Brasil",
+      output_id = "sp_ivar_chart",
+      height = "260px"
+    )
+  ),
+
   bslib::layout_columns(
     col_widths = c(6, 6),
     chart_card(
@@ -1086,6 +1104,159 @@ server <- function(input, output, session) {
       return(NULL)
     }
     max(secovi_data()$date, na.rm = TRUE) %m-% lubridate::years(yrs)
+  })
+
+  # São Paulo KPI grid ----
+
+  output$sp_kpi_grid <- shiny::renderUI({
+    sp  <- splits()
+    sec <- secovi_data()
+
+    # IGMI-R São Paulo — 12m acum.
+    igmi_sp <- sp$sale |>
+      dplyr::filter(source == "IGMI-R", name_muni == "São Paulo", !is.na(acum12m)) |>
+      dplyr::arrange(date)
+    v_igmi_sp <- utils::tail(igmi_sp$acum12m, 2)
+    igmi_sp_card <- kpi_card(
+      "IGMI-R — São Paulo",
+      fmt_pct_br(utils::tail(v_igmi_sp, 1)),
+      pp_lbl(diff(v_igmi_sp) * 100),
+      "12m acum.",
+      igmi_sp$acum12m * 100,
+      color = "blue",
+      dir = pp_dir(diff(v_igmi_sp))
+    )
+
+    # IVAR São Paulo — 12m acum.
+    ivar_sp <- sp$rent |>
+      dplyr::filter(source == "IVAR", name_muni == "São Paulo", !is.na(acum12m)) |>
+      dplyr::arrange(date)
+    v_ivar_sp <- utils::tail(ivar_sp$acum12m, 2)
+    ivar_sp_card <- kpi_card(
+      "IVAR — São Paulo",
+      fmt_pct_br(utils::tail(v_ivar_sp, 1)),
+      pp_lbl(diff(v_ivar_sp) * 100),
+      "12m acum.",
+      ivar_sp$acum12m * 100,
+      color = "green",
+      dir = pp_dir(diff(v_ivar_sp))
+    )
+
+    # Diferencial IGMI-R SP − Brasil — spread in pp, delta = change vs. prior month.
+    igmi_br <- sp$sale |>
+      dplyr::filter(source == "IGMI-R", name_muni == "Brazil", !is.na(acum12m)) |>
+      dplyr::arrange(date) |>
+      dplyr::transmute(date, br = acum12m)
+    diff_igmi <- dplyr::inner_join(
+      dplyr::transmute(igmi_sp, date, sp_val = acum12m),
+      igmi_br,
+      by = "date"
+    ) |> dplyr::mutate(diff_pp = (sp_val - br) * 100)
+    v_diff <- utils::tail(diff_igmi$diff_pp, 2)
+    diff_curr <- utils::tail(v_diff, 1)
+    diff_card <- kpi_card(
+      "Diferencial SP − Brasil",
+      sub("\\.", ",", sprintf("%+.1f pp", diff_curr)),
+      pp_lbl(diff(v_diff)),
+      "IGMI-R venda",
+      diff_igmi$diff_pp,
+      color = "amber",
+      dir = pp_dir(diff(v_diff))
+    )
+
+    # VSO São Paulo — 12-month mean, YoY delta.
+    vso_roll <- roll_mean(secovi_pick(sec, "sales", "vso_vendas_sobre_oferta"))
+    vso_v    <- vso_roll$value
+    vso_curr <- utils::tail(vso_v[!is.na(vso_v)], 1)
+    last_vso <- suppressWarnings(max(which(!is.na(vso_v))))
+    vso_prev <- if (
+      is.finite(last_vso) && last_vso - 12 >= 1 && !is.na(vso_v[last_vso - 12])
+    ) vso_v[last_vso - 12] else NA_real_
+    vso_card <- kpi_card(
+      "VSO — São Paulo",
+      paste0(fmt_num_br(vso_curr, 1), "%"),
+      pp_lbl(vso_curr - vso_prev),
+      "média 12m",
+      vso_v,
+      color = "teal",
+      dir = pp_dir(vso_curr - vso_prev)
+    )
+
+    # Meses de Estoque — latest value, delta vs. prior month.
+    est_v    <- sp_estoque_meses_df()$value
+    est_last <- utils::tail(est_v[!is.na(est_v)], 2)
+    est_card <- kpi_card(
+      "Meses de Estoque",
+      sub("\\.", ",", sprintf("%.1f", utils::tail(est_last, 1))),
+      pp_lbl(diff(est_last)),
+      "oferta ÷ vendas 12m",
+      est_v,
+      color = "purple",
+      dir = pp_dir(diff(est_last))
+    )
+
+    # VGV Vendas — trailing 12m sum, YoY % delta.
+    vgv_roll <- roll_sum(secovi_pick(sec, "sales", "vgv_em_milhoes_de_r"))
+    vgv_v    <- vgv_roll$value
+    vgv_curr <- utils::tail(vgv_v[!is.na(vgv_v)], 1)
+    last_vgv <- suppressWarnings(max(which(!is.na(vgv_v))))
+    vgv_prev <- if (
+      is.finite(last_vgv) && last_vgv - 12 >= 1 && !is.na(vgv_v[last_vgv - 12])
+    ) vgv_v[last_vgv - 12] else NA_real_
+    vgv_yoy <- if (!is.na(vgv_curr) && !is.na(vgv_prev) && vgv_prev != 0) {
+      (vgv_curr / vgv_prev - 1) * 100
+    } else NA_real_
+    vgv_card <- kpi_card(
+      "VGV — Vendas",
+      paste0("R$ ", fmt_num_br(vgv_curr / 1000, 1), " bi"),
+      if (is.na(vgv_yoy)) "—" else sub("\\.", ",", sprintf("%+.1f%%", vgv_yoy)),
+      "soma 12m",
+      vgv_v,
+      color = "red",
+      dir = if (!is.na(vgv_yoy) && vgv_yoy >= 0) "up" else "down"
+    )
+
+    shiny::div(
+      class = "kpi-grid",
+      igmi_sp_card,
+      ivar_sp_card,
+      diff_card,
+      vso_card,
+      est_card,
+      vgv_card
+    )
+  })
+
+  # IGMI-R SP vs Brasil — acum. 12m comparison.
+  output$sp_igmir_chart <- echarts4r::renderEcharts4r({
+    sale <- splits()$sale
+    sp_line <- sale |>
+      dplyr::filter(source == "IGMI-R", name_muni == "São Paulo", !is.na(acum12m)) |>
+      dplyr::transmute(date, `São Paulo` = round(acum12m * 100, 2))
+    br_line <- sale |>
+      dplyr::filter(source == "IGMI-R", name_muni == "Brazil", !is.na(acum12m)) |>
+      dplyr::transmute(date, Brasil = round(acum12m * 100, 2))
+    wide <- dplyr::full_join(sp_line, br_line, by = "date")
+    echart_wide_lines(
+      wide, c("São Paulo", "Brasil"), "Acum. 12m (%)", sp_window(),
+      zero_line = TRUE
+    )
+  })
+
+  # IVAR SP vs Brasil — acum. 12m comparison (national IVAR stored with name_muni = NA).
+  output$sp_ivar_chart <- echarts4r::renderEcharts4r({
+    rent <- splits()$rent
+    sp_line <- rent |>
+      dplyr::filter(source == "IVAR", name_muni == "São Paulo", !is.na(acum12m)) |>
+      dplyr::transmute(date, `São Paulo` = round(acum12m * 100, 2))
+    br_line <- rent |>
+      dplyr::filter(source == "IVAR", is.na(name_muni), !is.na(acum12m)) |>
+      dplyr::transmute(date, Brasil = round(acum12m * 100, 2))
+    wide <- dplyr::full_join(sp_line, br_line, by = "date")
+    echart_wide_lines(
+      wide, c("São Paulo", "Brasil"), "Acum. 12m (%)", sp_window(),
+      zero_line = TRUE
+    )
   })
 
   output$sp_launch_sales <- echarts4r::renderEcharts4r({
