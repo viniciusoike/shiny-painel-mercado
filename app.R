@@ -345,7 +345,11 @@ page_mercado <- shiny::tagList(
   ),
   bslib::layout_columns(
     col_widths = c(6, 6),
-    trend_card_ui("mkt_delivered", "Entregas de Unidades — Total", "unidades/mês"),
+    trend_card_ui(
+      "mkt_delivered",
+      "Entregas de Unidades — Total",
+      "unidades/mês"
+    ),
     chart_card(
       "VGV — Lançamentos vs. Vendas — Total",
       "R$ milhões · soma 12m",
@@ -1011,15 +1015,27 @@ server <- function(input, output, session) {
     cred_curr <- utils::tail(cred_v[!is.na(cred_v)], 1)
     last_cred <- suppressWarnings(max(which(!is.na(cred_v))))
     cred_prev <- if (
-      is.finite(last_cred) && last_cred - 12 >= 1 && !is.na(cred_v[last_cred - 12])
-    ) cred_v[last_cred - 12] else NA_real_
+      is.finite(last_cred) &&
+        last_cred - 12 >= 1 &&
+        !is.na(cred_v[last_cred - 12])
+    ) {
+      cred_v[last_cred - 12]
+    } else {
+      NA_real_
+    }
     cred_yoy <- if (!is.na(cred_curr) && !is.na(cred_prev) && cred_prev != 0) {
       (cred_curr / cred_prev - 1) * 100
-    } else NA_real_
+    } else {
+      NA_real_
+    }
     cred_card <- kpi_card(
       "Crédito SBPE",
       paste0("R$ ", fmt_num_br(cred_curr, 1), " bi"),
-      if (is.na(cred_yoy)) "—" else sub("\\.", ",", sprintf("%+.1f%%", cred_yoy)),
+      if (is.na(cred_yoy)) {
+        "—"
+      } else {
+        sub("\\.", ",", sprintf("%+.1f%%", cred_yoy))
+      },
       "soma 12m",
       cred_v,
       color = "purple",
@@ -1028,17 +1044,27 @@ server <- function(input, output, session) {
 
     # 7. VSO São Paulo — 12-month mean (VSO is a ratio; don't sum)
     vso_roll <- roll_mean(dplyr::select(
-      dplyr::arrange(dplyr::filter(
-        secovi_data(), name == "vso_vendas_sobre_oferta", variable == "sales"
-      ), date),
-      date, value
+      dplyr::arrange(
+        dplyr::filter(
+          secovi_data(),
+          name == "vso_vendas_sobre_oferta",
+          variable == "sales"
+        ),
+        date
+      ),
+      date,
+      value
     ))
     vso_v <- vso_roll$value
     vso_curr <- utils::tail(vso_v[!is.na(vso_v)], 1)
     last_vso <- suppressWarnings(max(which(!is.na(vso_v))))
     vso_prev <- if (
       is.finite(last_vso) && last_vso - 12 >= 1 && !is.na(vso_v[last_vso - 12])
-    ) vso_v[last_vso - 12] else NA_real_
+    ) {
+      vso_v[last_vso - 12]
+    } else {
+      NA_real_
+    }
     vso_card <- kpi_card(
       "VSO São Paulo",
       paste0(fmt_num_br(vso_curr, 1), "%"),
@@ -1109,12 +1135,16 @@ server <- function(input, output, session) {
   # São Paulo KPI grid ----
 
   output$sp_kpi_grid <- shiny::renderUI({
-    sp  <- splits()
+    sp <- splits()
     sec <- secovi_data()
 
     # IGMI-R São Paulo — 12m acum.
     igmi_sp <- sp$sale |>
-      dplyr::filter(source == "IGMI-R", name_muni == "São Paulo", !is.na(acum12m)) |>
+      dplyr::filter(
+        source == "IGMI-R",
+        name_muni == "São Paulo",
+        !is.na(acum12m)
+      ) |>
       dplyr::arrange(date)
     v_igmi_sp <- utils::tail(igmi_sp$acum12m, 2)
     igmi_sp_card <- kpi_card(
@@ -1129,7 +1159,11 @@ server <- function(input, output, session) {
 
     # IVAR São Paulo — 12m acum.
     ivar_sp <- sp$rent |>
-      dplyr::filter(source == "IVAR", name_muni == "São Paulo", !is.na(acum12m)) |>
+      dplyr::filter(
+        source == "IVAR",
+        name_muni == "São Paulo",
+        !is.na(acum12m)
+      ) |>
       dplyr::arrange(date)
     v_ivar_sp <- utils::tail(ivar_sp$acum12m, 2)
     ivar_sp_card <- kpi_card(
@@ -1144,14 +1178,19 @@ server <- function(input, output, session) {
 
     # Diferencial IGMI-R SP − Brasil — spread in pp, delta = change vs. prior month.
     igmi_br <- sp$sale |>
-      dplyr::filter(source == "IGMI-R", name_muni == "Brazil", !is.na(acum12m)) |>
+      dplyr::filter(
+        source == "IGMI-R",
+        name_muni == "Brazil",
+        !is.na(acum12m)
+      ) |>
       dplyr::arrange(date) |>
       dplyr::transmute(date, br = acum12m)
     diff_igmi <- dplyr::inner_join(
       dplyr::transmute(igmi_sp, date, sp_val = acum12m),
       igmi_br,
       by = "date"
-    ) |> dplyr::mutate(diff_pp = (sp_val - br) * 100)
+    ) |>
+      dplyr::mutate(diff_pp = (sp_val - br) * 100)
     v_diff <- utils::tail(diff_igmi$diff_pp, 2)
     diff_curr <- utils::tail(v_diff, 1)
     diff_card <- kpi_card(
@@ -1166,12 +1205,16 @@ server <- function(input, output, session) {
 
     # VSO São Paulo — 12-month mean, YoY delta.
     vso_roll <- roll_mean(secovi_pick(sec, "sales", "vso_vendas_sobre_oferta"))
-    vso_v    <- vso_roll$value
+    vso_v <- vso_roll$value
     vso_curr <- utils::tail(vso_v[!is.na(vso_v)], 1)
     last_vso <- suppressWarnings(max(which(!is.na(vso_v))))
     vso_prev <- if (
       is.finite(last_vso) && last_vso - 12 >= 1 && !is.na(vso_v[last_vso - 12])
-    ) vso_v[last_vso - 12] else NA_real_
+    ) {
+      vso_v[last_vso - 12]
+    } else {
+      NA_real_
+    }
     vso_card <- kpi_card(
       "VSO — São Paulo",
       paste0(fmt_num_br(vso_curr, 1), "%"),
@@ -1183,7 +1226,7 @@ server <- function(input, output, session) {
     )
 
     # Meses de Estoque — latest value, delta vs. prior month.
-    est_v    <- sp_estoque_meses_df()$value
+    est_v <- sp_estoque_meses_df()$value
     est_last <- utils::tail(est_v[!is.na(est_v)], 2)
     est_card <- kpi_card(
       "Meses de Estoque",
@@ -1197,15 +1240,21 @@ server <- function(input, output, session) {
 
     # VGV Vendas — trailing 12m sum, YoY % delta.
     vgv_roll <- roll_sum(secovi_pick(sec, "sales", "vgv_em_milhoes_de_r"))
-    vgv_v    <- vgv_roll$value
+    vgv_v <- vgv_roll$value
     vgv_curr <- utils::tail(vgv_v[!is.na(vgv_v)], 1)
     last_vgv <- suppressWarnings(max(which(!is.na(vgv_v))))
     vgv_prev <- if (
       is.finite(last_vgv) && last_vgv - 12 >= 1 && !is.na(vgv_v[last_vgv - 12])
-    ) vgv_v[last_vgv - 12] else NA_real_
+    ) {
+      vgv_v[last_vgv - 12]
+    } else {
+      NA_real_
+    }
     vgv_yoy <- if (!is.na(vgv_curr) && !is.na(vgv_prev) && vgv_prev != 0) {
       (vgv_curr / vgv_prev - 1) * 100
-    } else NA_real_
+    } else {
+      NA_real_
+    }
     vgv_card <- kpi_card(
       "VGV — Vendas",
       paste0("R$ ", fmt_num_br(vgv_curr / 1000, 1), " bi"),
@@ -1231,14 +1280,25 @@ server <- function(input, output, session) {
   output$sp_igmir_chart <- echarts4r::renderEcharts4r({
     sale <- splits()$sale
     sp_line <- sale |>
-      dplyr::filter(source == "IGMI-R", name_muni == "São Paulo", !is.na(acum12m)) |>
+      dplyr::filter(
+        source == "IGMI-R",
+        name_muni == "São Paulo",
+        !is.na(acum12m)
+      ) |>
       dplyr::transmute(date, `São Paulo` = round(acum12m * 100, 2))
     br_line <- sale |>
-      dplyr::filter(source == "IGMI-R", name_muni == "Brazil", !is.na(acum12m)) |>
+      dplyr::filter(
+        source == "IGMI-R",
+        name_muni == "Brazil",
+        !is.na(acum12m)
+      ) |>
       dplyr::transmute(date, Brasil = round(acum12m * 100, 2))
     wide <- dplyr::full_join(sp_line, br_line, by = "date")
     echart_wide_lines(
-      wide, c("São Paulo", "Brasil"), "Acum. 12m (%)", sp_window(),
+      wide,
+      c("São Paulo", "Brasil"),
+      "Acum. 12m (%)",
+      sp_window(),
       zero_line = TRUE
     )
   })
@@ -1247,14 +1307,21 @@ server <- function(input, output, session) {
   output$sp_ivar_chart <- echarts4r::renderEcharts4r({
     rent <- splits()$rent
     sp_line <- rent |>
-      dplyr::filter(source == "IVAR", name_muni == "São Paulo", !is.na(acum12m)) |>
+      dplyr::filter(
+        source == "IVAR",
+        name_muni == "São Paulo",
+        !is.na(acum12m)
+      ) |>
       dplyr::transmute(date, `São Paulo` = round(acum12m * 100, 2))
     br_line <- rent |>
       dplyr::filter(source == "IVAR", is.na(name_muni), !is.na(acum12m)) |>
       dplyr::transmute(date, Brasil = round(acum12m * 100, 2))
     wide <- dplyr::full_join(sp_line, br_line, by = "date")
     echart_wide_lines(
-      wide, c("São Paulo", "Brasil"), "Acum. 12m (%)", sp_window(),
+      wide,
+      c("São Paulo", "Brasil"),
+      "Acum. 12m (%)",
+      sp_window(),
       zero_line = TRUE
     )
   })
@@ -1463,7 +1530,10 @@ server <- function(input, output, session) {
       by = "date"
     )
     echart_wide_lines(
-      wide, c("Lançamentos", "Vendas"), "R$ milhões · soma 12m", mkt_win()
+      wide,
+      c("Lançamentos", "Vendas"),
+      "R$ milhões · soma 12m",
+      mkt_win()
     )
   })
 
