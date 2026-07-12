@@ -6,7 +6,10 @@
 
 Interactive R Shiny dashboard for Brazilian residential real estate market indices — prices, credit, primary market, macro, and São Paulo housing indicators.
 
-<img src="static/images/print_prices.png" alt="Dashboard screenshot" width="700">
+**Live demo:** [viniciusoike-shiny-painel-mercado.share.connect.posit.cloud](https://viniciusoike-shiny-painel-mercado.share.connect.posit.cloud)
+
+<img src="static/images/print_panorama.png" alt="Panorama tab screenshot" width="700">
+<img src="static/images/print_prices.png" alt="Preços tab screenshot" width="700">
 
 ```r
 # Dependencies are pinned with renv; restore them on first clone
@@ -28,14 +31,21 @@ Network access is required on first run to fetch market data. Subsequent runs us
 
 ## Deployment
 
-The app is **read-only over a pre-warmed cache** — it never refetches at runtime, so it deploys cleanly to Posit Connect and stays stateless. To publish (or to update the data shown):
+The app is **read-only over a pre-warmed cache** — it never refetches at runtime, so it deploys cleanly and stays stateless. It's hosted on **Posit Connect Cloud, linked directly to this GitHub repo**: Connect Cloud deploys straight from the repo's current commit, with no build step, so the pre-warmed data has to be committed to git. `load_dataset()` reads the gitignored `.cache/` first (local dev), then falls back to the git-tracked `data-cache/` seed.
+
+To publish fresh data:
 
 ```r
-Rscript tools/prewarm.R   # force-fetch every dataset into .cache/*.rds (fresh stamps)
-Rscript tools/deploy.R    # rsconnect::deployApp() bundling the .cache/*.rds seed
+Rscript tools/prewarm.R   # force-fetch every dataset, refresh .cache/ and data-cache/
 ```
 
-`tools/deploy.R` lists `appFiles` explicitly, so the cache ships in the bundle and dev-only files (analysis scripts, etc.) are excluded. Fresh data reaches the live app only via a redeploy.
+```sh
+git add data-cache && git commit -m "Refresh data cache" && git push
+```
+
+The push both ships the new data and triggers Connect Cloud's auto-redeploy. `.github/workflows/refresh-data.yml` does this on a weekly schedule automatically (plus manual `workflow_dispatch`).
+
+Deploying to a traditional Posit Connect server instead? `Rscript tools/deploy.R` bundles `.cache/*.rds` via `rsconnect::deployApp()` with an explicit `appFiles` list (dev-only files excluded).
 
 ## Data Sources
 
