@@ -175,8 +175,13 @@ fetch_bcb_sgs <- function(code, years = 9) {
 # Loader ----------------------------------------------------------------------
 
 CACHE_DIR <- here::here(".cache")
+# Git-tracked deploy seed (unlike .cache/, which is gitignored dev-only
+# state). Posit Connect Cloud deploys straight from the git repo with no
+# build step, so this is the only data a fresh deploy can read before ever
+# hitting the network. Populated by tools/prewarm.R; see CLAUDE.md.
+SEED_DIR <- here::here("data-cache")
 
-cache_path <- function(name) file.path(CACHE_DIR, paste0(name, ".rds"))
+cache_path <- function(name, dir = CACHE_DIR) file.path(dir, paste0(name, ".rds"))
 
 load_dataset <- function(name, force = FALSE) {
   spec <- DATASETS[[name]]
@@ -190,6 +195,11 @@ load_dataset <- function(name, force = FALSE) {
   path <- cache_path(name)
   if (!force && file.exists(path)) {
     return(readRDS(path))
+  }
+
+  seed <- cache_path(name, SEED_DIR)
+  if (!force && file.exists(seed)) {
+    return(readRDS(seed))
   }
 
   # spec$fetch overrides the default realestatebr path (e.g. direct BCB API).

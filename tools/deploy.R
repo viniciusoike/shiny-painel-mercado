@@ -1,4 +1,8 @@
-# Deploy the app to Posit Connect with the pre-warmed cache bundled.
+# Deploy the app to a traditional Posit Connect server with the pre-warmed
+# cache bundled via rsconnect::deployApp(). NOT used for Posit Connect Cloud
+# (which deploys straight from the linked GitHub repo) — that path instead
+# reads the git-tracked data-cache/ seed directly; see R/_setup.R's SEED_DIR
+# and tools/prewarm.R.
 #
 # Run tools/prewarm.R first so .cache/*.rds is fresh — those files ship in the
 # bundle and the app reads them at startup (no live fetch on the host).

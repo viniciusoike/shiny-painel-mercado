@@ -1,10 +1,15 @@
 # Regenerate the bundled cache "seed" before deploying.
 #
 # Force-fetches every dataset the app uses into .cache/<name>.rds so each file
-# carries a fresh `fetched_at` stamp. The app ships this cache and reads it at
-# startup, so it never depends on live network access on the host (Posit
-# Connect). To publish fresh data: run this, confirm every line says "ok",
-# then run tools/deploy.R.
+# carries a fresh `fetched_at` stamp, then copies the results into the
+# git-tracked data-cache/ directory. Posit Connect Cloud deploys straight from
+# the git repo (no build step, no bundle upload), so data-cache/ is the only
+# thing standing between a fresh deploy and a live, from-scratch fetch of
+# every dataset (see R/_setup.R's SEED_DIR). To publish fresh data: run this,
+# confirm every line says "ok", then `git add data-cache && git commit && git
+# push` (or let .github/workflows/refresh-data.yml do it on schedule).
+# Deploying to a traditional Posit Connect server instead of Connect Cloud?
+# Run tools/deploy.R afterwards to bundle-upload .cache/ via rsconnect.
 #
 # Usage:  Rscript tools/prewarm.R
 
@@ -32,4 +37,17 @@ message(paste(results, collapse = "\n"))
 if (any(grepl("^(FAIL|WARN)", results))) {
   stop("Pre-warm incomplete — some datasets did not fetch. Do not deploy.")
 }
-message("\nCache seed ready in .cache/. Next: Rscript tools/deploy.R")
+
+# Publish into the git-tracked seed only once every dataset above is "ok" —
+# never copy a partial/failed refresh into the committed seed.
+dir.create("data-cache", showWarnings = FALSE, recursive = TRUE)
+file.copy(
+  list.files(".cache", pattern = "\\.rds$", full.names = TRUE),
+  "data-cache",
+  overwrite = TRUE
+)
+
+message(
+  "\nCache seed ready in .cache/ and data-cache/. Next: commit & push ",
+  "data-cache/ (Connect Cloud) or run tools/deploy.R (Posit Connect server)."
+)
