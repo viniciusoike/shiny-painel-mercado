@@ -1,4 +1,6 @@
-library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(readr)
 library(here)
 
 # Ekio brand colors (mirror of R/utils.R::pal — kept inline so this
