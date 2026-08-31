@@ -97,6 +97,39 @@ prep_rppi <- function(df) {
 
 # Dataset registry ------------------------------------------------------------
 
+# bcb_series carries Selic as a daily series; the app wants one value a month.
+prep_bcb_selic <- function(df) {
+  need <- c("date", "name_simplified", "value")
+  if (is.null(df) || nrow(df) == 0 || !all(need %in% names(df))) {
+    return(data.frame(date = as.Date(character()), value = numeric()))
+  }
+  sel <- df[df$name_simplified == "selic", c("date", "value")]
+  if (nrow(sel) == 0) {
+    return(data.frame(date = as.Date(character()), value = numeric()))
+  }
+  sel |>
+    dplyr::filter(!is.na(.data$value)) |>
+    dplyr::mutate(month = lubridate::floor_date(.data$date, "month")) |>
+    dplyr::group_by(.data$month) |>
+    dplyr::slice_tail(n = 1) |>
+    dplyr::ungroup() |>
+    dplyr::transmute(date = .data$month, value = .data$value) |>
+    dplyr::arrange(.data$date)
+}
+
+# Selic, preferring realestatebr. bcb_series carries it daily back to 1999 and
+# is fetched anyway, so this costs nothing and avoids a second SGS call — the
+# call that used to fail often enough to empty the dataset and stop the
+# pre-warm. Older caches predate Selic landing in bcb_series, so fall back to
+# a direct windowed SGS 432 request when it is absent.
+fetch_bcb_selic <- function() {
+  series <- tryCatch(load_dataset("bcb_series"), error = function(e) NULL)
+  out <- prep_bcb_selic(series)
+  if (nrow(out) > 0) return(out)
+  warning("bcb_series carries no 'selic'; falling back to a direct SGS fetch.")
+  fetch_bcb_sgs(432, start = as.Date("1999-01-01"))
+}
+
 # App-level dataset names -> realestatebr (dataset, table) plus a prep
 # function. Cached individually at .cache/<name>.rds.
 DATASETS <- list(
@@ -127,57 +160,108 @@ DATASETS <- list(
     dataset = "secovi", table = "all",
     prep = make_prep("secovi", c("date", "category", "variable", "value"))
   ),
-  # Selic meta (SGS 432), the one macro series realestatebr doesn't carry.
-  # Fetched straight from BCB; degrades to an empty tibble if unreachable.
+  # Selic comes out of bcb_series, which carries it daily back to 1999.
+  # Requesting SGS 432 directly used to empty this dataset whenever BCB
+  # throttled the call, and an empty Selic fails the whole pre-warm.
   bcb_selic = list(
-    fetch = function() fetch_bcb_sgs(432),
+    fetch = fetch_bcb_selic,
     prep  = function(df) df
   ),
-  # Employment, income and production series (SGS), fetched directly for the
-  # same reason as Selic: realestatebr does not carry all of them.
+  # Employment, income and production series. realestatebr does not carry
+  # these, so they come from SGS directly — incrementally, off the previous
+  # cache, so a refresh asks for a few months rather than two decades.
   bcb_activity = list(
-    fetch = function() fetch_bcb_activity(),
+    fetch = function(previous) fetch_bcb_activity(previous),
     prep  = function(df) prep_bcb_activity(df)
   )
 )
 
+# SGS request retry ------------------------------------------------------------
+
+# One SGS request, retried with backoff. BCB throttles bursts and times out on
+# large spans, which used to empty a whole dataset on a single bad response.
+# Raises with the HTTP status so callers can report why a series is missing.
+sgs_request <- function(code, from, to, tries = 4L) {
+  url <- sprintf(
+    paste0(
+      "https://api.bcb.gov.br/dados/serie/bcdata.sgs.%d/dados",
+      "?formato=json&dataInicial=%s&dataFinal=%s"
+    ),
+    code, format(from, "%d/%m/%Y"), format(to, "%d/%m/%Y")
+  )
+  last <- NULL
+  for (attempt in seq_len(tries)) {
+    res <- tryCatch({
+      # BCB's API rejects non-browser User-Agents with HTTP 406.
+      h <- curl::new_handle(timeout = 120L, connecttimeout = 20L)
+      curl::handle_setheaders(
+        h, "User-Agent" = "Mozilla/5.0 (painel-mercado-imobiliario)"
+      )
+      resp <- curl::curl_fetch_memory(url, handle = h)
+      if (resp$status_code != 200) stop("HTTP ", resp$status_code)
+      body <- rawToChar(resp$content)
+      Encoding(body) <- "UTF-8"
+      if (!nzchar(trimws(body))) return(sgs_empty())
+      jsonlite::fromJSON(body)
+    }, error = function(e) e)
+    if (!inherits(res, "error")) return(res)
+    last <- res
+    # Linear backoff: BCB recovers in seconds, so there is no need to
+    # wait minutes before the last attempt.
+    if (attempt < tries) Sys.sleep(2 * attempt)
+  }
+  stop("SGS ", code, " failed after ", tries, " tries: ", conditionMessage(last))
+}
+
+sgs_empty <- function() data.frame(data = character(), valor = character())
+
 # BCB SGS series -> monthly (last obs per month; a no-op for series already
-# published monthly). BCB caps daily-series queries at ~10 years per request,
-# hence the default 9-year window; pass `start` for a longer monthly history.
+# published monthly). SGS caps daily-series queries at ~10 years per request,
+# so anything longer is fetched in windows and stitched back together.
 # Returns an empty data.frame (with a fetch_error attr) on any failure so the
 # app keeps running.
-fetch_bcb_sgs <- function(code, years = 9, start = NULL) {
-  from <- if (is.null(start)) Sys.Date() - lubridate::years(years) else start
-  start <- format(as.Date(from), "%d/%m/%Y")
-  url <- sprintf(
-    "https://api.bcb.gov.br/dados/serie/bcdata.sgs.%d/dados?formato=json&dataInicial=%s",
-    code, start
-  )
+fetch_bcb_sgs <- function(code, years = 9, start = NULL, end = Sys.Date(),
+                          tries = 4L) {
+  from <- as.Date(if (is.null(start)) Sys.Date() - lubridate::years(years) else start)
+  end <- as.Date(end)
+  if (from > end) return(sgs_monthly(sgs_empty()))
+
+  # Windows of just under 10 years, the span SGS accepts in one request.
+  starts <- seq(from, end, by = "10 years")
+  ends <- c(starts[-1] - 1, end)
+
   out <- tryCatch({
-    # BCB's API rejects non-browser User-Agents with HTTP 406.
-    h <- curl::new_handle()
-    curl::handle_setheaders(
-      h, "User-Agent" = "Mozilla/5.0 (painel-mercado-imobiliario)"
-    )
-    resp <- curl::curl_fetch_memory(url, handle = h)
-    if (resp$status_code != 200) stop("HTTP ", resp$status_code)
-    raw <- jsonlite::fromJSON(rawToChar(resp$content))
-    raw |>
-      dplyr::transmute(
-        date  = lubridate::dmy(.data$data),
-        value = as.numeric(.data$valor)
-      ) |>
-      dplyr::mutate(month = lubridate::floor_date(date, "month")) |>
-      dplyr::group_by(month) |>
-      dplyr::slice_tail(n = 1) |>
-      dplyr::ungroup() |>
-      dplyr::transmute(date = month, value = value)
+    # Indexed rather than Map()ed: mapply() drops the Date class and the
+    # bounds would reach sgs_request() as bare numbers.
+    parts <- lapply(seq_along(starts), function(i) {
+      sgs_request(code, starts[i], ends[i], tries)
+    })
+    sgs_monthly(dplyr::bind_rows(parts))
   }, error = function(e) {
     df <- data.frame(date = as.Date(character()), value = numeric())
     attr(df, "fetch_error") <- conditionMessage(e)
     df
   })
   out
+}
+
+# Raw SGS rows (data/valor) -> one row per month, keeping the last observation.
+sgs_monthly <- function(raw) {
+  if (is.null(raw) || nrow(raw) == 0) {
+    return(data.frame(date = as.Date(character()), value = numeric()))
+  }
+  raw |>
+    dplyr::transmute(
+      date  = lubridate::dmy(.data$data),
+      value = as.numeric(.data$valor)
+    ) |>
+    dplyr::filter(!is.na(.data$date)) |>
+    dplyr::mutate(month = lubridate::floor_date(.data$date, "month")) |>
+    dplyr::group_by(.data$month) |>
+    dplyr::slice_tail(n = 1) |>
+    dplyr::ungroup() |>
+    dplyr::transmute(date = .data$month, value = .data$value) |>
+    dplyr::arrange(.data$date)
 }
 
 # BCB activity series ---------------------------------------------------------
@@ -208,16 +292,44 @@ SGS_ATIVIDADE <- tibble::tribble(
 
 # Fetch every SGS_ATIVIDADE series into one long frame. A series that fails is
 # skipped with a warning instead of aborting the whole dataset.
-fetch_bcb_activity <- function(start = as.Date("2004-01-01")) {
+# `previous` is the last good version of this dataset (from cache). When it is
+# supplied, each series is refetched only from its last stored observation
+# rather than from `start`, which keeps the weekly refresh to a handful of new
+# rows per series instead of ~260. A series whose incremental request fails
+# keeps its stored history instead of vanishing from the dataset.
+fetch_bcb_activity <- function(previous = NULL,
+                               start = as.Date("2004-01-01"),
+                               revise_months = 6) {
+  have <- !is.null(previous) && nrow(previous) > 0 &&
+    all(c("series", "date", "value") %in% names(previous))
+
   parts <- lapply(seq_len(nrow(SGS_ATIVIDADE)), function(i) {
     row <- SGS_ATIVIDADE[i, ]
-    d <- fetch_bcb_sgs(row$code, start = start)
-    if (nrow(d) == 0) {
-      warning("SGS series ", row$code, " (", row$series, ") returned no rows.")
-      return(NULL)
+    old <- if (have) previous[previous$series == row$series, c("series", "date", "value")] else NULL
+    if (!is.null(old) && nrow(old) == 0) old <- NULL
+
+    # Refetch the last few months alongside the new ones: BCB revises recent
+    # observations, and re-requesting them costs almost nothing.
+    from <- if (is.null(old)) start else {
+      max(start, lubridate::floor_date(max(old$date), "month") -
+            months(revise_months))
     }
-    dplyr::mutate(d, series = row$series, .before = 1)
+
+    d <- fetch_bcb_sgs(row$code, start = from)
+    if (nrow(d) == 0) {
+      why <- attr(d, "fetch_error")
+      warning(
+        "SGS series ", row$code, " (", row$series, ") returned no rows",
+        if (is.null(why)) "." else paste0(": ", why),
+        if (is.null(old)) "" else " Keeping stored history."
+      )
+      if (is.null(old)) return(NULL)
+      return(old)
+    }
+    d <- dplyr::mutate(d, series = row$series, .before = 1)
+    if (is.null(old)) d else sgs_merge(old, d)
   })
+
   parts <- Filter(Negate(is.null), parts)
   if (length(parts) == 0) return(data.frame())
   dplyr::bind_rows(parts) |>
@@ -226,6 +338,15 @@ fetch_bcb_activity <- function(start = as.Date("2004-01-01")) {
       by = "series"
     ) |>
     dplyr::arrange(series, date)
+}
+
+# Upsert freshly fetched rows over stored ones, newest value winning per date.
+# Never returns fewer rows than it was given, so a short incremental response
+# cannot truncate a stored series.
+sgs_merge <- function(old, new) {
+  keep <- old[!old$date %in% new$date, , drop = FALSE]
+  out <- dplyr::arrange(dplyr::bind_rows(keep, new), .data$date)
+  if (nrow(out) < nrow(old)) old else out
 }
 
 # Seasonally adjust one series with STL. Series already adjusted at the source
@@ -355,12 +476,23 @@ load_dataset <- function(name, force = FALSE) {
     return(readRDS(seed))
   }
 
+  # The last good copy, read even under force = TRUE: an incremental fetch
+  # needs it to know where to resume, and it is the fallback if the fetch
+  # comes back empty.
+  previous <- tryCatch({
+    if (file.exists(path)) readRDS(path)
+    else if (file.exists(seed)) readRDS(seed)
+    else NULL
+  }, error = function(e) NULL)
+
   # spec$fetch overrides the default realestatebr path (e.g. direct BCB API).
   # A failed fetch/prep (network error, schema change) must never abort startup:
   # degrade to an empty frame and let the fallback below recover from cache.
   out <- tryCatch({
     raw <- if (!is.null(spec$fetch)) {
-      spec$fetch()
+      # A fetch function taking an argument gets the last good cache, so it
+      # can ask upstream only for what it does not already have.
+      if (length(formals(spec$fetch))) spec$fetch(previous) else spec$fetch()
     } else {
       suppressWarnings(
         realestatebr::get_dataset(spec$dataset, table = spec$table)
@@ -377,7 +509,7 @@ load_dataset <- function(name, force = FALSE) {
   # return the empty frame WITHOUT caching so the next load retries instead of
   # poisoning the cache with permanent emptiness.
   if (nrow(out) == 0) {
-    if (file.exists(path)) return(readRDS(path))
+    if (!is.null(previous) && nrow(previous) > 0) return(previous)
     warning(
       "Fetch for '", name, "' returned no rows; not caching. ",
       "It will be retried on the next load."
