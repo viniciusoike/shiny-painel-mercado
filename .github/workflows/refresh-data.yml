@@ -47,10 +47,10 @@ jobs:
         with:
           dependencies: '"hard"'
           packages: |
-            any::curl
             any::dplyr
+            any::GetBCBData
             any::here
-            any::jsonlite
+            github::viniciusoike/ekioplot
             any::lubridate
             github::viniciusoike/realestatebr
             any::shiny

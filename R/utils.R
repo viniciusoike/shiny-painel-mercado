@@ -3,17 +3,8 @@
 
 # Ekio palette ----------------------------------------------------------------
 
-# Canonical Ekio brand colors, in brand-priority order (blue, orange, teal,
-# gold, purple, ...). These are ekioplot::ekio_pal("full") hardcoded — kept
-# inline so the app doesn't pull ekioplot's ggplot2/gt dependency tree at
-# runtime. get_color_palette() returns the first n (discrete up to 8, then
-# recycled), matching ekio_pal("full", n).
-pal <- c("#1E3A5F", "#DD6B20", "#2C7A7B", "#D69E2E",
-         "#805AD5", "#C53030", "#38A169", "#718096")
-
 get_color_palette <- function(n) {
-  if (n <= length(pal)) return(pal[seq_len(n)])
-  rep_len(pal, n)
+  ekioplot::ekio_pal("full", n = n)
 }
 
 # Formatting ------------------------------------------------------------------
@@ -28,8 +19,13 @@ fmt_pct_br <- function(x, digits = 1) {
 
 # pt-BR number with comma decimal ("14.75" -> "14,75").
 fmt_num_br <- function(x, digits = 2) {
-  out <- formatC(x, format = "f", digits = digits, big.mark = ".",
-                 decimal.mark = ",")
+  out <- formatC(
+    x,
+    format = "f",
+    digits = digits,
+    big.mark = ".",
+    decimal.mark = ","
+  )
   out[is.na(x)] <- "—"
   out
 }
@@ -37,7 +33,7 @@ fmt_num_br <- function(x, digits = 2) {
 # Trailing 12-month accumulated % from a vector of monthly % changes.
 acum12m_pct <- function(monthly_pct) {
   logr <- log1p(monthly_pct / 100)
-  acc  <- stats::filter(logr, rep(1, 12), sides = 1)
+  acc <- stats::filter(logr, rep(1, 12), sides = 1)
   as.numeric(expm1(acc) * 100)
 }
 
@@ -46,12 +42,20 @@ acum12m_pct <- function(monthly_pct) {
 # Direction of a delta for coloring a KPI card. Guards against the length-0
 # diff() of a degraded series with < 2 points.
 pp_dir <- function(d) {
-  if (length(d) == 0 || is.na(d)) "neutral" else if (d >= 0) "up" else "down"
+  if (length(d) == 0 || is.na(d)) {
+    "neutral"
+  } else if (d >= 0) {
+    "up"
+  } else {
+    "down"
+  }
 }
 
 # Signed "pp" delta label ("+1,23 pp"); "—" when there is no valid delta.
 pp_lbl <- function(d) {
-  if (length(d) == 0 || is.na(d)) return("—")
+  if (length(d) == 0 || is.na(d)) {
+    return("—")
+  }
   sub("\\.", ",", sprintf("%+.2f pp", d))
 }
 
@@ -61,7 +65,9 @@ pp_lbl <- function(d) {
 # render the mockup's CSS bar sparkline.
 kpi_sparkline <- function(values, n = 12) {
   v <- utils::tail(values[!is.na(values)], n)
-  if (length(v) < 2) return(NULL)
+  if (length(v) < 2) {
+    return(NULL)
+  }
   rng <- range(v)
   span <- if (diff(rng) == 0) 1 else diff(rng)
   heights <- 3 + (v - rng[1]) / span * 97
@@ -75,8 +81,15 @@ kpi_sparkline <- function(values, n = 12) {
 
 # One KPI card. `value`/`delta` are preformatted strings; `dir` in
 # up/down/neutral colors the delta; `color` is a mockup accent class.
-kpi_card <- function(label, value, delta, period, spark_values,
-                     color = "blue", dir = "neutral") {
+kpi_card <- function(
+  label,
+  value,
+  delta,
+  period,
+  spark_values,
+  color = "blue",
+  dir = "neutral"
+) {
   shiny::div(
     class = paste("kpi-card", color),
     shiny::div(class = "kpi-label", label),
@@ -95,11 +108,15 @@ kpi_card <- function(label, value, delta, period, spark_values,
 # Scrollable year × index table (Ano | INCC | IPCA | IGMI-R | IVAR), most recent
 # year first. `df` is the wide frame from yearly_accum_data(); NA cells show "—".
 yearly_accum_table <- function(df) {
-  if (is.null(df) || nrow(df) == 0) return(shiny::p("Sem dados."))
+  if (is.null(df) || nrow(df) == 0) {
+    return(shiny::p("Sem dados."))
+  }
   d <- df[order(df$year, decreasing = TRUE), , drop = FALSE]
 
   num_cell <- function(x) {
-    if (is.na(x)) return(shiny::tags$td(class = "num", "—"))
+    if (is.na(x)) {
+      return(shiny::tags$td(class = "num", "—"))
+    }
     cls <- if (x >= 0) "num positive" else "num negative"
     shiny::tags$td(class = cls, sub("\\.", ",", sprintf("%+.1f%%", x)))
   }
@@ -137,10 +154,17 @@ yearly_accum_table <- function(df) {
 # Annual sales units per dormitório (Ano | 1..4 dorm | Total | Δ a/a), most
 # recent year first. `df` is the wide frame from secovi_rooms_yearly(); the
 # trend column is the year-over-year % change of the Total. NA cells show "—".
-secovi_rooms_table <- function(df, cols = c("1 dorm", "2 dorm", "3 dorm", "4 dorm")) {
-  if (is.null(df) || nrow(df) == 0) return(shiny::p("Sem dados."))
+secovi_rooms_table <- function(
+  df,
+  cols = c("1 dorm", "2 dorm", "3 dorm", "4 dorm")
+) {
+  if (is.null(df) || nrow(df) == 0) {
+    return(shiny::p("Sem dados."))
+  }
   present <- intersect(cols, names(df))
-  if (length(present) == 0) return(shiny::p("Sem dados."))
+  if (length(present) == 0) {
+    return(shiny::p("Sem dados."))
+  }
 
   d <- df[order(df$year), , drop = FALSE]
   d$Total <- rowSums(as.matrix(d[present]), na.rm = TRUE)
@@ -149,10 +173,14 @@ secovi_rooms_table <- function(df, cols = c("1 dorm", "2 dorm", "3 dorm", "4 dor
   # Drop years with no complete data (Total is NA), then most-recent-first.
   d <- d[!is.na(d$Total), , drop = FALSE]
   d <- d[order(d$year, decreasing = TRUE), , drop = FALSE]
-  if (nrow(d) == 0) return(shiny::p("Sem dados."))
+  if (nrow(d) == 0) {
+    return(shiny::p("Sem dados."))
+  }
 
   num_cell <- function(x) {
-    if (is.na(x)) return(shiny::tags$td(class = "num", "—"))
+    if (is.na(x)) {
+      return(shiny::tags$td(class = "num", "—"))
+    }
     shiny::tags$td(class = "num", fmt_num_br(x, 0))
   }
   yoy_cell <- function(x) {
@@ -191,7 +219,6 @@ secovi_rooms_table <- function(df, cols = c("1 dorm", "2 dorm", "3 dorm", "4 dor
 # Last-month summary per city (mockup "Resumo por Cidade"). sale/rent are
 # long RPPI tibbles already filtered to a single source.
 city_summary_table <- function(sale, rent, cities) {
-
   last_obs <- function(df) {
     df |>
       dplyr::filter(name_muni %in% cities, !is.na(acum12m)) |>
@@ -209,7 +236,9 @@ city_summary_table <- function(sale, rent, cities) {
   tbl <- dplyr::left_join(s, r, by = "name_muni") |>
     dplyr::arrange(dplyr::desc(sale_12m))
 
-  if (nrow(tbl) == 0) return(shiny::p("Sem dados."))
+  if (nrow(tbl) == 0) {
+    return(shiny::p("Sem dados."))
+  }
 
   num_cell <- function(x, digits = 1) {
     cls <- if (is.na(x) || x >= 0) "num positive" else "num negative"

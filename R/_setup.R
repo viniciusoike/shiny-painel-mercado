@@ -6,49 +6,52 @@ library(dplyr)
 library(tidyr)
 library(lubridate)
 library(here)
-library(jsonlite)
-library(curl)
 
 # Labels ----------------------------------------------------------------------
 
 vlvar <- c(
   "Acumulado 12 Meses (%)" = "acum12m",
-  "Variação Mensal (%)"    = "chg",
-  "Índice"                 = "index",
-  "YoY do Trend (STL, %)"  = "trend_yoy"
+  "Variação Mensal (%)" = "chg",
+  "Índice" = "index",
+  "YoY do Trend (STL, %)" = "trend_yoy"
 )
 
 # STL trend -------------------------------------------------------------------
 
-# STL trend of a monthly vector, aligned to `dates`. stl() cannot handle NAs,
-# so the trend is computed on the leading/trailing-trimmed contiguous segment
-# and mapped back. Returns all-NA when the series is too short (< 36) or has
-# interior gaps.
+# STL trend of a monthly vector, aligned to `dates`. trendseries cannot handle
+# NAs, so the trend is computed on the leading/trailing-trimmed contiguous
+# segment and mapped back. Returns all-NA when the series is too short (< 36)
+# or has interior gaps.
 stl_trend_vec <- function(v, dates) {
-
   ord <- order(dates)
-  v   <- v[ord]
-  d   <- dates[ord]
+  v <- v[ord]
+  d <- dates[ord]
   out <- rep(NA_real_, length(v))
 
   nn <- which(!is.na(v))
-  if (length(nn) < 36) return(out[order(ord)])
+  if (length(nn) < 36) {
+    return(out[order(ord)])
+  }
 
   first <- nn[1]
-  last  <- nn[length(nn)]
-  seg   <- v[first:last]
-  if (anyNA(seg)) return(out[order(ord)])  # interior gaps break stl()
+  last <- nn[length(nn)]
+  seg <- v[first:last]
+  if (anyNA(seg)) {
+    return(out[order(ord)])
+  } # interior gaps break stl()
 
-  trend <- tryCatch({
-    s <- d[first]
-    ts_obj <- stats::ts(
-      seg,
-      start     = c(lubridate::year(s), lubridate::month(s)),
-      frequency = 12
-    )
-    fit <- stats::stl(ts_obj, s.window = "periodic", robust = TRUE)
-    as.numeric(fit$time.series[, "trend"])
-  }, error = function(e) rep(NA_real_, length(seg)))
+  trend <- tryCatch(
+    {
+      result <- trendseries::augment_trends(
+        data.frame(date = d[first:last], value = seg),
+        methods = "stl",
+        params = list(robust = TRUE),
+        .quiet = TRUE
+      )
+      result$trend_stl
+    },
+    error = function(e) rep(NA_real_, length(seg))
+  )
 
   out[first:last] <- trend
   out[order(ord)]
@@ -57,7 +60,7 @@ stl_trend_vec <- function(v, dates) {
 # STL on the monthly index, then 12-month % change of the trend component.
 add_stl_trend <- function(df) {
   df <- dplyr::arrange(df, date)
-  df$trend     <- stl_trend_vec(df$index, df$date)
+  df$trend <- stl_trend_vec(df$index, df$date)
   df$trend_yoy <- (df$trend / dplyr::lag(df$trend, 12) - 1) * 100
   df
 }
@@ -67,14 +70,18 @@ add_stl_trend <- function(df) {
 # Generic prep: validate required columns, leave data untouched.
 # Dataset-specific transforms replace these as tabs get built.
 make_prep <- function(name, required) {
-  force(name); force(required)
+  force(name)
+  force(required)
   function(df) {
     missing <- setdiff(required, names(df))
     if (length(missing) > 0) {
       stop(
-        "get_dataset('", name, "') returned unexpected columns. Missing: ",
+        "get_dataset('",
+        name,
+        "') returned unexpected columns. Missing: ",
         paste(missing, collapse = ", "),
-        ". Got: ", paste(names(df), collapse = ", ")
+        ". Got: ",
+        paste(names(df), collapse = ", ")
       )
     }
     df
@@ -125,7 +132,9 @@ prep_bcb_selic <- function(df) {
 fetch_bcb_selic <- function() {
   series <- tryCatch(load_dataset("bcb_series"), error = function(e) NULL)
   out <- prep_bcb_selic(series)
-  if (nrow(out) > 0) return(out)
+  if (nrow(out) > 0) {
+    return(out)
+  }
   warning("bcb_series carries no 'selic'; falling back to a direct SGS fetch.")
   fetch_bcb_sgs(432, start = as.Date("1999-01-01"))
 }
@@ -137,27 +146,33 @@ DATASETS <- list(
     # table = "all" stacks every index source (FipeZap, IVG-R, IVAR, ...).
     # Only the default FipeZAP table lives in the GitHub cache, so this
     # falls back to a fresh download from the original sources.
-    dataset = "rppi", table = "all",
+    dataset = "rppi",
+    table = "all",
     prep = prep_rppi
   ),
   abecip_sbpe = list(
-    dataset = "abecip", table = "sbpe",
+    dataset = "abecip",
+    table = "sbpe",
     prep = make_prep("abecip", c("date", "sbpe_netflow", "sbpe_stock"))
   ),
   abecip_units = list(
-    dataset = "abecip", table = "units",
+    dataset = "abecip",
+    table = "units",
     prep = make_prep("abecip", "date")
   ),
   abrainc = list(
-    dataset = "abrainc", table = "indicator",
+    dataset = "abrainc",
+    table = "indicator",
     prep = make_prep("abrainc", c("date", "category", "variable", "value"))
   ),
   bcb_series = list(
-    dataset = "bcb_series", table = "core",
+    dataset = "bcb_series",
+    table = "core",
     prep = make_prep("bcb_series", c("date", "name_simplified", "value"))
   ),
   secovi = list(
-    dataset = "secovi", table = "all",
+    dataset = "secovi",
+    table = "all",
     prep = make_prep("secovi", c("date", "category", "variable", "value"))
   ),
   # Selic comes out of bcb_series, which carries it daily back to 1999.
@@ -165,103 +180,64 @@ DATASETS <- list(
   # throttled the call, and an empty Selic fails the whole pre-warm.
   bcb_selic = list(
     fetch = fetch_bcb_selic,
-    prep  = function(df) df
+    prep = function(df) df
   ),
   # Employment, income and production series. realestatebr does not carry
   # these, so they come from SGS directly — incrementally, off the previous
   # cache, so a refresh asks for a few months rather than two decades.
   bcb_activity = list(
     fetch = function(previous) fetch_bcb_activity(previous),
-    prep  = function(df) prep_bcb_activity(df)
+    prep = function(df) prep_bcb_activity(df)
   )
 )
 
-# SGS request retry ------------------------------------------------------------
+# BCB SGS fetch ---------------------------------------------------------------
 
-# One SGS request, retried with backoff. BCB throttles bursts and times out on
-# large spans, which used to empty a whole dataset on a single bad response.
-# Raises with the HTTP status so callers can report why a series is missing.
-sgs_request <- function(code, from, to, tries = 4L) {
-  url <- sprintf(
-    paste0(
-      "https://api.bcb.gov.br/dados/serie/bcdata.sgs.%d/dados",
-      "?formato=json&dataInicial=%s&dataFinal=%s"
-    ),
-    code, format(from, "%d/%m/%Y"), format(to, "%d/%m/%Y")
+# Fetch one BCB SGS series through GetBCBData and reduce it to one observation
+# per month. GetBCBData handles long date ranges, retries, and response parsing;
+# the app retains responsibility for monthly aggregation and failure metadata.
+fetch_bcb_sgs <- function(
+  code,
+  years = 9,
+  start = NULL,
+  end = Sys.Date()
+) {
+  from <- as.Date(
+    if (is.null(start)) Sys.Date() - lubridate::years(years) else start
   )
-  last <- NULL
-  for (attempt in seq_len(tries)) {
-    res <- tryCatch({
-      # BCB's API rejects non-browser User-Agents with HTTP 406.
-      h <- curl::new_handle(timeout = 120L, connecttimeout = 20L)
-      curl::handle_setheaders(
-        h, "User-Agent" = "Mozilla/5.0 (painel-mercado-imobiliario)"
-      )
-      resp <- curl::curl_fetch_memory(url, handle = h)
-      if (resp$status_code != 200) stop("HTTP ", resp$status_code)
-      body <- rawToChar(resp$content)
-      Encoding(body) <- "UTF-8"
-      if (!nzchar(trimws(body))) return(sgs_empty())
-      jsonlite::fromJSON(body)
-    }, error = function(e) e)
-    if (!inherits(res, "error")) return(res)
-    last <- res
-    # Linear backoff: BCB recovers in seconds, so there is no need to
-    # wait minutes before the last attempt.
-    if (attempt < tries) Sys.sleep(2 * attempt)
-  }
-  stop("SGS ", code, " failed after ", tries, " tries: ", conditionMessage(last))
-}
-
-sgs_empty <- function() data.frame(data = character(), valor = character())
-
-# BCB SGS series -> monthly (last obs per month; a no-op for series already
-# published monthly). SGS caps daily-series queries at ~10 years per request,
-# so anything longer is fetched in windows and stitched back together.
-# Returns an empty data.frame (with a fetch_error attr) on any failure so the
-# app keeps running.
-fetch_bcb_sgs <- function(code, years = 9, start = NULL, end = Sys.Date(),
-                          tries = 4L) {
-  from <- as.Date(if (is.null(start)) Sys.Date() - lubridate::years(years) else start)
   end <- as.Date(end)
-  if (from > end) return(sgs_monthly(sgs_empty()))
-
-  # Windows of just under 10 years, the span SGS accepts in one request.
-  starts <- seq(from, end, by = "10 years")
-  ends <- c(starts[-1] - 1, end)
-
-  out <- tryCatch({
-    # Indexed rather than Map()ed: mapply() drops the Date class and the
-    # bounds would reach sgs_request() as bare numbers.
-    parts <- lapply(seq_along(starts), function(i) {
-      sgs_request(code, starts[i], ends[i], tries)
-    })
-    sgs_monthly(dplyr::bind_rows(parts))
-  }, error = function(e) {
-    df <- data.frame(date = as.Date(character()), value = numeric())
-    attr(df, "fetch_error") <- conditionMessage(e)
-    df
-  })
-  out
-}
-
-# Raw SGS rows (data/valor) -> one row per month, keeping the last observation.
-sgs_monthly <- function(raw) {
-  if (is.null(raw) || nrow(raw) == 0) {
+  if (from > end) {
     return(data.frame(date = as.Date(character()), value = numeric()))
   }
-  raw |>
-    dplyr::transmute(
-      date  = lubridate::dmy(.data$data),
-      value = as.numeric(.data$valor)
-    ) |>
-    dplyr::filter(!is.na(.data$date)) |>
-    dplyr::mutate(month = lubridate::floor_date(.data$date, "month")) |>
-    dplyr::group_by(.data$month) |>
-    dplyr::slice_tail(n = 1) |>
-    dplyr::ungroup() |>
-    dplyr::transmute(date = .data$month, value = .data$value) |>
-    dplyr::arrange(.data$date)
+
+  tryCatch(
+    {
+      raw <- GetBCBData::gbcbd_get_series(
+        id = code,
+        first.date = from,
+        last.date = end,
+        be.quiet = TRUE,
+        use.memoise = FALSE
+      )
+      out <- raw |>
+        dplyr::filter(!is.na(.data$ref.date)) |>
+        dplyr::mutate(month = lubridate::floor_date(.data$ref.date, "month")) |>
+        dplyr::group_by(.data$month) |>
+        dplyr::slice_tail(n = 1) |>
+        dplyr::ungroup() |>
+        dplyr::transmute(date = .data$month, value = as.numeric(.data$value)) |>
+        dplyr::arrange(.data$date)
+      if (nrow(out) == 0) {
+        attr(out, "fetch_error") <- "GetBCBData returned no observations."
+      }
+      out
+    },
+    error = function(e) {
+      out <- data.frame(date = as.Date(character()), value = numeric())
+      attr(out, "fetch_error") <- conditionMessage(e)
+      out
+    }
+  )
 }
 
 # BCB activity series ---------------------------------------------------------
@@ -272,22 +248,22 @@ sgs_monthly <- function(raw) {
 # 12-month comparison: levels use a % change, rates a percentage-point
 # difference. `group` sets the block each card lands in on the Atividade tab.
 SGS_ATIVIDADE <- tibble::tribble(
-  ~series,                     ~code, ~label,                                              ~unit,          ~sa_source, ~kind,   ~group,
-  "pnad_ocupados",             24379, "Pessoas Ocupadas (PNAD Contínua)",                  "mil pessoas",  FALSE,      "level", "trabalho",
-  "pnad_forca_trabalho",       24378, "Força de Trabalho (PNAD Contínua)",                 "mil pessoas",  FALSE,      "level", "trabalho",
-  "pnad_desocupacao",          24369, "Taxa de Desocupação (PNAD Contínua)",               "%",            FALSE,      "rate",  "trabalho",
-  "emprego_formal",            28763, "Estoque de Empregos Formais — Total",               "pessoas",      FALSE,      "level", "trabalho",
-  "emprego_formal_construcao", 28770, "Estoque de Empregos Formais — Construção",          "pessoas",      FALSE,      "level", "trabalho",
-  "massa_rendimento",          28545, "Massa de Rendimento Real Habitual",                 "R$ milhões",   FALSE,      "level", "renda",
-  "rendimento_medio",          24382, "Rendimento Médio Real Habitual",                    "R$",           FALSE,      "level", "renda",
-  "renda_disponivel",          29027, "Renda Disponível das Famílias — Massa",             "R$ milhões",   TRUE,       "level", "renda",
-  "ipi_geral",                 28503, "Produção Industrial — Geral",                       "índice",       TRUE,       "level", "producao",
-  "ipi_construcao",            28511, "Produção Industrial — Insumos da Construção Civil", "índice",       TRUE,       "level", "producao",
-  "ipi_duraveis",              28509, "Produção Industrial — Bens de Consumo Duráveis",    "índice",       TRUE,       "level", "producao",
-  "ibc_br",                    24364, "IBC-Br — Atividade Econômica",                      "índice",       TRUE,       "level", "producao",
-  "varejo",                    28473, "Volume de Vendas no Varejo — Total",                "índice",       TRUE,       "level", "producao",
-  "varejo_material_construcao", 28484, "Volume de Vendas — Material de Construção",        "índice",       TRUE,       "level", "producao",
-  "pms_servicos",              23982, "Volume de Serviços (PMS) — Total",                  "índice",       FALSE,      "level", "producao"
+  ~series                      , ~code , ~label                                              , ~unit         , ~sa_source , ~kind   , ~group     ,
+  "pnad_ocupados"              , 24379 , "Pessoas Ocupadas (PNAD Contínua)"                  , "mil pessoas" , FALSE      , "level" , "trabalho" ,
+  "pnad_forca_trabalho"        , 24378 , "Força de Trabalho (PNAD Contínua)"                 , "mil pessoas" , FALSE      , "level" , "trabalho" ,
+  "pnad_desocupacao"           , 24369 , "Taxa de Desocupação (PNAD Contínua)"               , "%"           , FALSE      , "rate"  , "trabalho" ,
+  "emprego_formal"             , 28763 , "Estoque de Empregos Formais — Total"               , "pessoas"     , FALSE      , "level" , "trabalho" ,
+  "emprego_formal_construcao"  , 28770 , "Estoque de Empregos Formais — Construção"          , "pessoas"     , FALSE      , "level" , "trabalho" ,
+  "massa_rendimento"           , 28545 , "Massa de Rendimento Real Habitual"                 , "R$ milhões"  , FALSE      , "level" , "renda"    ,
+  "rendimento_medio"           , 24382 , "Rendimento Médio Real Habitual"                    , "R$"          , FALSE      , "level" , "renda"    ,
+  "renda_disponivel"           , 29027 , "Renda Disponível das Famílias — Massa"             , "R$ milhões"  , TRUE       , "level" , "renda"    ,
+  "ipi_geral"                  , 28503 , "Produção Industrial — Geral"                       , "índice"      , TRUE       , "level" , "producao" ,
+  "ipi_construcao"             , 28511 , "Produção Industrial — Insumos da Construção Civil" , "índice"      , TRUE       , "level" , "producao" ,
+  "ipi_duraveis"               , 28509 , "Produção Industrial — Bens de Consumo Duráveis"    , "índice"      , TRUE       , "level" , "producao" ,
+  "ibc_br"                     , 24364 , "IBC-Br — Atividade Econômica"                      , "índice"      , TRUE       , "level" , "producao" ,
+  "varejo"                     , 28473 , "Volume de Vendas no Varejo — Total"                , "índice"      , TRUE       , "level" , "producao" ,
+  "varejo_material_construcao" , 28484 , "Volume de Vendas — Material de Construção"         , "índice"      , TRUE       , "level" , "producao" ,
+  "pms_servicos"               , 23982 , "Volume de Serviços (PMS) — Total"                  , "índice"      , FALSE      , "level" , "producao"
 )
 
 # Fetch every SGS_ATIVIDADE series into one long frame. A series that fails is
@@ -297,33 +273,53 @@ SGS_ATIVIDADE <- tibble::tribble(
 # rather than from `start`, which keeps the weekly refresh to a handful of new
 # rows per series instead of ~260. A series whose incremental request fails
 # keeps its stored history instead of vanishing from the dataset.
-fetch_bcb_activity <- function(previous = NULL,
-                               start = as.Date("2004-01-01"),
-                               revise_months = 6) {
-  have <- !is.null(previous) && nrow(previous) > 0 &&
+fetch_bcb_activity <- function(
+  previous = NULL,
+  start = as.Date("2004-01-01"),
+  revise_months = 6
+) {
+  have <- !is.null(previous) &&
+    nrow(previous) > 0 &&
     all(c("series", "date", "value") %in% names(previous))
 
   parts <- lapply(seq_len(nrow(SGS_ATIVIDADE)), function(i) {
     row <- SGS_ATIVIDADE[i, ]
-    old <- if (have) previous[previous$series == row$series, c("series", "date", "value")] else NULL
-    if (!is.null(old) && nrow(old) == 0) old <- NULL
+    old <- if (have) {
+      previous[previous$series == row$series, c("series", "date", "value")]
+    } else {
+      NULL
+    }
+    if (!is.null(old) && nrow(old) == 0) {
+      old <- NULL
+    }
 
     # Refetch the last few months alongside the new ones: BCB revises recent
     # observations, and re-requesting them costs almost nothing.
-    from <- if (is.null(old)) start else {
-      max(start, lubridate::floor_date(max(old$date), "month") -
-            months(revise_months))
+    from <- if (is.null(old)) {
+      start
+    } else {
+      max(
+        start,
+        lubridate::floor_date(max(old$date), "month") -
+          months(revise_months)
+      )
     }
 
     d <- fetch_bcb_sgs(row$code, start = from)
     if (nrow(d) == 0) {
       why <- attr(d, "fetch_error")
       warning(
-        "SGS series ", row$code, " (", row$series, ") returned no rows",
+        "SGS series ",
+        row$code,
+        " (",
+        row$series,
+        ") returned no rows",
         if (is.null(why)) "." else paste0(": ", why),
         if (is.null(old)) "" else " Keeping stored history."
       )
-      if (is.null(old)) return(NULL)
+      if (is.null(old)) {
+        return(NULL)
+      }
       return(old)
     }
     d <- dplyr::mutate(d, series = row$series, .before = 1)
@@ -331,7 +327,9 @@ fetch_bcb_activity <- function(previous = NULL,
   })
 
   parts <- Filter(Negate(is.null), parts)
-  if (length(parts) == 0) return(data.frame())
+  if (length(parts) == 0) {
+    return(data.frame())
+  }
   dplyr::bind_rows(parts) |>
     dplyr::left_join(
       dplyr::select(SGS_ATIVIDADE, series, code, sa_source, kind),
@@ -354,18 +352,24 @@ sgs_merge <- function(old, new) {
 deseason_vec <- function(v, dates) {
   ok <- !is.na(v)
   out <- rep(NA_real_, length(v))
-  if (sum(ok) < 36 || !requireNamespace("trendseries", quietly = TRUE)) {
+  if (sum(ok) < 36) {
     return(v)
   }
-  adj <- tryCatch({
-    res <- trendseries::deseason_series(
-      data.frame(date = dates[ok], value = v[ok]),
-      methods = "stl",
-      .quiet = TRUE
-    )
-    res$seasadj_stl
-  }, error = function(e) NULL)
-  if (is.null(adj) || length(adj) != sum(ok)) return(v)
+  adj <- tryCatch(
+    {
+      res <- trendseries::deseason_series(
+        data.frame(date = dates[ok], value = v[ok]),
+        methods = "stl",
+        params = list(robust = TRUE),
+        .quiet = TRUE
+      )
+      res$seasadj_stl
+    },
+    error = function(e) NULL
+  )
+  if (is.null(adj) || length(adj) != sum(ok)) {
+    return(v)
+  }
   out[ok] <- adj
   out
 }
@@ -374,25 +378,29 @@ deseason_vec <- function(v, dates) {
 # the 12-month comparison (`yoy`, % for levels and pp for rates), per series.
 prep_bcb_activity <- function(df) {
   make_prep("bcb_activity", c("date", "series", "value"))(df)
-  if (nrow(df) == 0) return(df)
+  if (nrow(df) == 0) {
+    return(df)
+  }
 
   df |>
     dplyr::group_by(series) |>
-    dplyr::group_modify(~ {
-      d <- dplyr::arrange(.x, date)
-      d$sa <- if (isTRUE(d$sa_source[1])) {
-        d$value
-      } else {
-        deseason_vec(d$value, d$date)
+    dplyr::group_modify(
+      ~ {
+        d <- dplyr::arrange(.x, date)
+        d$sa <- if (isTRUE(d$sa_source[1])) {
+          d$value
+        } else {
+          deseason_vec(d$value, d$date)
+        }
+        d$trend <- stl_trend_vec(d$sa, d$date)
+        d$yoy <- if (identical(d$kind[1], "rate")) {
+          d$sa - dplyr::lag(d$sa, 12)
+        } else {
+          (d$sa / dplyr::lag(d$sa, 12) - 1) * 100
+        }
+        d
       }
-      d$trend <- stl_trend_vec(d$sa, d$date)
-      d$yoy <- if (identical(d$kind[1], "rate")) {
-        d$sa - dplyr::lag(d$sa, 12)
-      } else {
-        (d$sa / dplyr::lag(d$sa, 12) - 1) * 100
-      }
-      d
-    }) |>
+    ) |>
     dplyr::ungroup()
 }
 
@@ -402,9 +410,18 @@ prep_bcb_activity <- function(df) {
 # "sa" (seasonally adjusted level), "raw" (as published), "trend" (STL trend of
 # the adjusted series) or "yoy".
 activity_pick <- function(act, series, metric = "sa") {
-  col <- switch(metric, sa = "sa", raw = "value", trend = "trend", yoy = "yoy", "sa")
+  col <- switch(
+    metric,
+    sa = "sa",
+    raw = "value",
+    trend = "trend",
+    yoy = "yoy",
+    "sa"
+  )
   d <- dplyr::filter(act, series == !!series)
-  if (nrow(d) == 0) return(data.frame(date = as.Date(character()), value = numeric()))
+  if (nrow(d) == 0) {
+    return(data.frame(date = as.Date(character()), value = numeric()))
+  }
   d |>
     dplyr::arrange(date) |>
     dplyr::transmute(date, value = .data[[col]])
@@ -440,9 +457,13 @@ rebase_100 <- function(df, cols) {
   present <- intersect(cols, names(df))
   d <- dplyr::arrange(df, date)
   complete <- which(stats::complete.cases(d[present]))
-  if (length(complete) == 0) return(d)
+  if (length(complete) == 0) {
+    return(d)
+  }
   base <- complete[1]
-  for (cl in present) d[[cl]] <- d[[cl]] / d[[cl]][base] * 100
+  for (cl in present) {
+    d[[cl]] <- d[[cl]] / d[[cl]][base] * 100
+  }
   d
 }
 
@@ -455,13 +476,17 @@ CACHE_DIR <- here::here(".cache")
 # hitting the network. Populated by tools/prewarm.R; see CLAUDE.md.
 SEED_DIR <- here::here("data-cache")
 
-cache_path <- function(name, dir = CACHE_DIR) file.path(dir, paste0(name, ".rds"))
+cache_path <- function(name, dir = CACHE_DIR) {
+  file.path(dir, paste0(name, ".rds"))
+}
 
 load_dataset <- function(name, force = FALSE) {
   spec <- DATASETS[[name]]
   if (is.null(spec)) {
     stop(
-      "Unknown dataset '", name, "'. Registered: ",
+      "Unknown dataset '",
+      name,
+      "'. Registered: ",
       paste(names(DATASETS), collapse = ", ")
     )
   }
@@ -479,39 +504,53 @@ load_dataset <- function(name, force = FALSE) {
   # The last good copy, read even under force = TRUE: an incremental fetch
   # needs it to know where to resume, and it is the fallback if the fetch
   # comes back empty.
-  previous <- tryCatch({
-    if (file.exists(path)) readRDS(path)
-    else if (file.exists(seed)) readRDS(seed)
-    else NULL
-  }, error = function(e) NULL)
+  previous <- tryCatch(
+    {
+      if (file.exists(path)) {
+        readRDS(path)
+      } else if (file.exists(seed)) {
+        readRDS(seed)
+      } else {
+        NULL
+      }
+    },
+    error = function(e) NULL
+  )
 
   # spec$fetch overrides the default realestatebr path (e.g. direct BCB API).
   # A failed fetch/prep (network error, schema change) must never abort startup:
   # degrade to an empty frame and let the fallback below recover from cache.
-  out <- tryCatch({
-    raw <- if (!is.null(spec$fetch)) {
-      # A fetch function taking an argument gets the last good cache, so it
-      # can ask upstream only for what it does not already have.
-      if (length(formals(spec$fetch))) spec$fetch(previous) else spec$fetch()
-    } else {
-      suppressWarnings(
-        realestatebr::get_dataset(spec$dataset, table = spec$table)
-      )
+  out <- tryCatch(
+    {
+      raw <- if (!is.null(spec$fetch)) {
+        # A fetch function taking an argument gets the last good cache, so it
+        # can ask upstream only for what it does not already have.
+        if (length(formals(spec$fetch))) spec$fetch(previous) else spec$fetch()
+      } else {
+        suppressWarnings(
+          realestatebr::get_dataset(spec$dataset, table = spec$table)
+        )
+      }
+      spec$prep(raw)
+    },
+    error = function(e) {
+      warning("Fetch/prep for '", name, "' failed: ", conditionMessage(e))
+      data.frame()
     }
-    spec$prep(raw)
-  }, error = function(e) {
-    warning("Fetch/prep for '", name, "' failed: ", conditionMessage(e))
-    data.frame()
-  })
+  )
 
   # A transient fetch failure (e.g. BCB API hiccup) yields an empty frame.
   # Never persist it: fall back to a previous cache if one exists, otherwise
   # return the empty frame WITHOUT caching so the next load retries instead of
   # poisoning the cache with permanent emptiness.
   if (nrow(out) == 0) {
-    if (!is.null(previous) && nrow(previous) > 0) return(previous)
+    if (!is.null(previous) && nrow(previous) > 0) {
+      return(previous)
+    }
     warning(
-      "Fetch for '", name, "' returned no rows; not caching. ",
+      "Fetch for '",
+      name,
+      "' returned no rows; not caching. ",
       "It will be retried on the next load."
     )
     return(out)
@@ -520,12 +559,15 @@ load_dataset <- function(name, force = FALSE) {
   attr(out, "fetched_at") <- Sys.time()
   # Persisting is best-effort: on a read-only host (e.g. Posit Connect) the
   # write may fail, which must not abort the load — the in-memory frame is fine.
-  tryCatch({
-    dir.create(CACHE_DIR, showWarnings = FALSE, recursive = TRUE)
-    saveRDS(out, path)
-  }, error = function(e) {
-    warning("Could not write cache for '", name, "': ", conditionMessage(e))
-  })
+  tryCatch(
+    {
+      dir.create(CACHE_DIR, showWarnings = FALSE, recursive = TRUE)
+      saveRDS(out, path)
+    },
+    error = function(e) {
+      warning("Could not write cache for '", name, "': ", conditionMessage(e))
+    }
+  )
   out
 }
 
@@ -547,9 +589,13 @@ split_rppi <- function(df) {
 # its Brazil rows to the selected city (a no-op when the city already is Brazil).
 sale_with_ivgr <- function(sale, city) {
   base <- dplyr::filter(sale, name_muni == city)
-  if (identical(city, "Brazil")) return(base)
+  if (identical(city, "Brazil")) {
+    return(base)
+  }
   ivgr <- dplyr::filter(sale, source == "IVG-R", name_muni == "Brazil")
-  if (nrow(ivgr) == 0) return(base)
+  if (nrow(ivgr) == 0) {
+    return(base)
+  }
   ivgr$name_muni <- city
   dplyr::bind_rows(base, ivgr)
 }
@@ -559,9 +605,13 @@ sale_with_ivgr <- function(sale, city) {
 # unless that city is "Brazil", since IVAR has no per-city series here).
 rent_with_ivar <- function(rent, city) {
   base <- dplyr::filter(rent, name_muni == city)
-  if (!identical(city, "Brazil")) return(base)
+  if (!identical(city, "Brazil")) {
+    return(base)
+  }
   ivar <- dplyr::filter(rent, source == "IVAR", is.na(name_muni))
-  if (nrow(ivar) == 0) return(base)
+  if (nrow(ivar) == 0) {
+    return(base)
+  }
   ivar$name_muni <- city
   dplyr::bind_rows(base, ivar)
 }
@@ -594,32 +644,58 @@ yearly_accum_data <- function(bcb, sp) {
 
   incc <- infl_year("incc")
   ipca <- infl_year("ipca")
-  igmi <- idx_year(dplyr::filter(sp$sale, source == "IGMI-R", name_muni == "Brazil"))
+  igmi <- idx_year(dplyr::filter(
+    sp$sale,
+    source == "IGMI-R",
+    name_muni == "Brazil"
+  ))
   ivar <- idx_year(dplyr::filter(sp$rent, source == "IVAR", is.na(name_muni)))
 
-  max_year <- suppressWarnings(max(c(incc$year, ipca$year, igmi$year, ivar$year)))
-  if (!is.finite(max_year)) return(data.frame())
+  max_year <- suppressWarnings(max(c(
+    incc$year,
+    ipca$year,
+    igmi$year,
+    ivar$year
+  )))
+  if (!is.finite(max_year)) {
+    return(data.frame())
+  }
   years <- 2010:max_year
   pick <- function(t) t$v[match(years, t$year)]
   data.frame(
     year = years,
-    incc = pick(incc), ipca = pick(ipca),
-    igmi = pick(igmi), ivar = pick(ivar)
+    incc = pick(incc),
+    ipca = pick(ipca),
+    igmi = pick(igmi),
+    ivar = pick(ivar)
   )
 }
 
 city_choices <- function(df) {
   cities <- sort(unique(df$name_muni))
   # data uses "Brazil" and title-case "Rio De Janeiro"
-  preferred <- c("Brazil", "Brasil", "São Paulo", "Rio De Janeiro",
-                 "Rio de Janeiro")
+  preferred <- c(
+    "Brazil",
+    "Brasil",
+    "São Paulo",
+    "Rio De Janeiro",
+    "Rio de Janeiro"
+  )
   c(intersect(preferred, cities), setdiff(cities, preferred))
 }
 
 # Main capitals for the comparison chart and summary table, in display order.
 MAIN_CITIES <- c(
-  "São Paulo", "Rio De Janeiro", "Belo Horizonte", "Curitiba",
-  "Porto Alegre", "Brasília", "Salvador", "Fortaleza", "Recife", "Goiânia"
+  "São Paulo",
+  "Rio De Janeiro",
+  "Belo Horizonte",
+  "Curitiba",
+  "Porto Alegre",
+  "Brasília",
+  "Salvador",
+  "Fortaleza",
+  "Recife",
+  "Goiânia"
 )
 
 # Secovi helpers --------------------------------------------------------------
@@ -627,7 +703,9 @@ MAIN_CITIES <- c(
 # Pull one Secovi series as date + value, sorted. `name` is optional.
 secovi_pick <- function(sec, variable, name = NULL) {
   d <- dplyr::filter(sec, variable == !!variable)
-  if (!is.null(name)) d <- dplyr::filter(d, name == !!name)
+  if (!is.null(name)) {
+    d <- dplyr::filter(d, name == !!name)
+  }
   d |>
     dplyr::arrange(date) |>
     dplyr::select(date, value)
@@ -639,7 +717,9 @@ roll_sum <- function(df, n = 12) {
   v <- df$value
   out <- rep(NA_real_, length(v))
   if (length(v) >= n) {
-    for (i in seq(n, length(v))) out[i] <- sum(v[(i - n + 1):i])
+    for (i in seq(n, length(v))) {
+      out[i] <- sum(v[(i - n + 1):i])
+    }
   }
   df$value <- out
   df
@@ -651,7 +731,9 @@ roll_mean <- function(df, n = 12) {
   v <- df$value
   out <- rep(NA_real_, length(v))
   if (length(v) >= n) {
-    for (i in seq(n, length(v))) out[i] <- mean(v[(i - n + 1):i])
+    for (i in seq(n, length(v))) {
+      out[i] <- mean(v[(i - n + 1):i])
+    }
   }
   df$value <- out
   df
@@ -737,7 +819,7 @@ abrainc_pick <- function(ab, category, variable = "total") {
 
 # Segmento chip -> ABRAINC segment variable.
 ABRAINC_SEGMENTO <- c(
-  "Total"       = "total",
-  "Econômico"   = "social_housing",
+  "Total" = "total",
+  "Econômico" = "social_housing",
   "Alto Padrão" = "market_rate"
 )
