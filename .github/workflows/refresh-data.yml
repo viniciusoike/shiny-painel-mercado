@@ -38,6 +38,11 @@ jobs:
       #
       # This list covers what tools/prewarm.R reaches: the library() calls in
       # R/_setup.R plus the packages R/utils.R and R/_setup.R use by ::.
+      #
+      # realestatebr comes from GitHub, not CRAN: 1.0.1.9000 swapped rbcb for
+      # GetBCBData, which splits long SGS requests into windows the API
+      # accepts, so bcb_series returns full history instead of dropping the
+      # daily series. Move back to any::realestatebr once that reaches CRAN.
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           dependencies: '"hard"'
@@ -47,7 +52,7 @@ jobs:
             any::here
             any::jsonlite
             any::lubridate
-            any::realestatebr
+            github::viniciusoike/realestatebr
             any::shiny
             any::tibble
             any::tidyr
