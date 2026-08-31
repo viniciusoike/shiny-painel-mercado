@@ -14,6 +14,12 @@ on:
 permissions:
   contents: write
 
+env:
+  # .Rprofile activates renv, which would point .libPaths() at an empty
+  # renv/library. This job installs current binaries with pak rather than
+  # restoring the lockfile, so the autoloader has to stay out of the way.
+  RENV_CONFIG_AUTOLOADER_ENABLED: false
+
 jobs:
   refresh:
     runs-on: ubuntu-latest
@@ -24,7 +30,33 @@ jobs:
         with:
           use-public-rspm: true
 
-      - uses: r-lib/actions/setup-renv@v2
+      # pak resolves Ubuntu system dependencies and installs P3M binaries at
+      # their current versions. renv::restore() would instead source-build
+      # every package the lockfile pins behind P3M's current release, which
+      # is what used to break this job. The job only writes .rds data files,
+      # so it does not need the app's exact pinned versions.
+      #
+      # This list covers what tools/prewarm.R reaches: the library() calls in
+      # R/_setup.R plus the packages R/utils.R and R/_setup.R use by ::.
+      #
+      # realestatebr comes from GitHub, not CRAN: 1.0.1.9000 swapped rbcb for
+      # GetBCBData, which splits long SGS requests into windows the API
+      # accepts, so bcb_series returns full history instead of dropping the
+      # daily series. Move back to any::realestatebr once that reaches CRAN.
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          dependencies: '"hard"'
+          packages: |
+            any::dplyr
+            any::GetBCBData
+            any::here
+            github::viniciusoike/ekioplot
+            any::lubridate
+            github::viniciusoike/realestatebr
+            any::shiny
+            any::tibble
+            any::tidyr
+            any::trendseries
 
       - name: Prewarm data cache
         run: Rscript tools/prewarm.R

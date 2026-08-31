@@ -1,10 +1,13 @@
-library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(readr)
 library(here)
 
-# Ekio brand colors (mirror of R/utils.R::pal — kept inline so this
-# exploratory script has no extra dependencies).
-ekio_blue   <- "#1E3A5F"
-ekio_orange <- "#DD6B20"
+# Ekio brand colors ----------------------------------------------------------
+
+ekio_colors <- ekioplot::ekio_pal("full", n = 2)
+ekio_blue <- ekio_colors[1]
+ekio_orange <- ekio_colors[2]
 
 current_date <- Sys.Date()
 current_year <- lubridate::year(current_date)
@@ -36,7 +39,8 @@ tab_year_sl <- secovi |>
   filter(
     variable %in% c("launches", "sales"),
     name == "unidades",
-    ts_year >= current_year - 5) |>
+    ts_year >= current_year - 5
+  ) |>
   group_by(ts_year, variable) |>
   summarise(total = sum(value, na.rm = TRUE))
 
@@ -51,10 +55,11 @@ ggplot(tab_year_sl, aes(x = ts_year, y = total, fill = variable)) +
   scale_fill_manual(
     name = "",
     values = c(ekio_blue, ekio_orange),
-    labels = c("Lancamentos", "Vendas")) +
+    labels = c("Lancamentos", "Vendas")
+  ) +
   scale_x_continuous(
     breaks = seq(min(tab_year_sl$ts_year), max(tab_year_sl$ts_year), 1)
-    ) +
+  ) +
   scale_y_continuous(labels = scales::label_number(big.mark = ".")) +
   theme_minimal() +
   labs(
@@ -73,7 +78,11 @@ ggplot(tab_year_sl, aes(x = ts_year, y = total, fill = variable)) +
 # VSO and inadimplência --------------------------------------------------------
 
 secovi |>
-  filter(ts_year >= 2018, variable == "sales", name == "vso_vendas_sobre_oferta") |>
+  filter(
+    ts_year >= 2018,
+    variable == "sales",
+    name == "vso_vendas_sobre_oferta"
+  ) |>
   ggplot(aes(x = ts_date)) +
   geom_line(aes(y = value), alpha = 0.5, color = ekio_orange) +
   geom_line(aes(y = stl_decomp), color = ekio_orange, linewidth = 1) +
