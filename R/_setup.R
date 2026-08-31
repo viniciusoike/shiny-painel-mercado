@@ -132,15 +132,23 @@ DATASETS <- list(
   bcb_selic = list(
     fetch = function() fetch_bcb_sgs(432),
     prep  = function(df) df
+  ),
+  # Employment, income and production series (SGS), fetched directly for the
+  # same reason as Selic: realestatebr does not carry all of them.
+  bcb_activity = list(
+    fetch = function() fetch_bcb_activity(),
+    prep  = function(df) prep_bcb_activity(df)
   )
 )
 
-# BCB SGS daily series -> monthly (last obs per month). BCB caps daily-series
-# queries at ~10 years per request, so the window starts 9 years back.
+# BCB SGS series -> monthly (last obs per month; a no-op for series already
+# published monthly). BCB caps daily-series queries at ~10 years per request,
+# hence the default 9-year window; pass `start` for a longer monthly history.
 # Returns an empty data.frame (with a fetch_error attr) on any failure so the
 # app keeps running.
-fetch_bcb_sgs <- function(code, years = 9) {
-  start <- format(Sys.Date() - lubridate::years(years), "%d/%m/%Y")
+fetch_bcb_sgs <- function(code, years = 9, start = NULL) {
+  from <- if (is.null(start)) Sys.Date() - lubridate::years(years) else start
+  start <- format(as.Date(from), "%d/%m/%Y")
   url <- sprintf(
     "https://api.bcb.gov.br/dados/serie/bcdata.sgs.%d/dados?formato=json&dataInicial=%s",
     code, start
@@ -170,6 +178,151 @@ fetch_bcb_sgs <- function(code, years = 9) {
     df
   })
   out
+}
+
+# BCB activity series ---------------------------------------------------------
+
+# Extra SGS series on employment, income and production. `sa_source = TRUE`
+# marks the series BCB already publishes seasonally adjusted; the rest are
+# adjusted here with an STL decomposition (trendseries). `kind` drives the
+# 12-month comparison: levels use a % change, rates a percentage-point
+# difference. `group` sets the block each card lands in on the Atividade tab.
+SGS_ATIVIDADE <- tibble::tribble(
+  ~series,                     ~code, ~label,                                              ~unit,          ~sa_source, ~kind,   ~group,
+  "pnad_ocupados",             24379, "Pessoas Ocupadas (PNAD Contínua)",                  "mil pessoas",  FALSE,      "level", "trabalho",
+  "pnad_forca_trabalho",       24378, "Força de Trabalho (PNAD Contínua)",                 "mil pessoas",  FALSE,      "level", "trabalho",
+  "pnad_desocupacao",          24369, "Taxa de Desocupação (PNAD Contínua)",               "%",            FALSE,      "rate",  "trabalho",
+  "emprego_formal",            28763, "Estoque de Empregos Formais — Total",               "pessoas",      FALSE,      "level", "trabalho",
+  "emprego_formal_construcao", 28770, "Estoque de Empregos Formais — Construção",          "pessoas",      FALSE,      "level", "trabalho",
+  "massa_rendimento",          28545, "Massa de Rendimento Real Habitual",                 "R$ milhões",   FALSE,      "level", "renda",
+  "rendimento_medio",          24382, "Rendimento Médio Real Habitual",                    "R$",           FALSE,      "level", "renda",
+  "renda_disponivel",          29027, "Renda Disponível das Famílias — Massa",             "R$ milhões",   TRUE,       "level", "renda",
+  "ipi_geral",                 28503, "Produção Industrial — Geral",                       "índice",       TRUE,       "level", "producao",
+  "ipi_construcao",            28511, "Produção Industrial — Insumos da Construção Civil", "índice",       TRUE,       "level", "producao",
+  "ipi_duraveis",              28509, "Produção Industrial — Bens de Consumo Duráveis",    "índice",       TRUE,       "level", "producao",
+  "ibc_br",                    24364, "IBC-Br — Atividade Econômica",                      "índice",       TRUE,       "level", "producao",
+  "varejo",                    28473, "Volume de Vendas no Varejo — Total",                "índice",       TRUE,       "level", "producao",
+  "varejo_material_construcao", 28484, "Volume de Vendas — Material de Construção",        "índice",       TRUE,       "level", "producao",
+  "pms_servicos",              23982, "Volume de Serviços (PMS) — Total",                  "índice",       FALSE,      "level", "producao"
+)
+
+# Fetch every SGS_ATIVIDADE series into one long frame. A series that fails is
+# skipped with a warning instead of aborting the whole dataset.
+fetch_bcb_activity <- function(start = as.Date("2004-01-01")) {
+  parts <- lapply(seq_len(nrow(SGS_ATIVIDADE)), function(i) {
+    row <- SGS_ATIVIDADE[i, ]
+    d <- fetch_bcb_sgs(row$code, start = start)
+    if (nrow(d) == 0) {
+      warning("SGS series ", row$code, " (", row$series, ") returned no rows.")
+      return(NULL)
+    }
+    dplyr::mutate(d, series = row$series, .before = 1)
+  })
+  parts <- Filter(Negate(is.null), parts)
+  if (length(parts) == 0) return(data.frame())
+  dplyr::bind_rows(parts) |>
+    dplyr::left_join(
+      dplyr::select(SGS_ATIVIDADE, series, code, sa_source, kind),
+      by = "series"
+    ) |>
+    dplyr::arrange(series, date)
+}
+
+# Seasonally adjust one series with STL. Series already adjusted at the source
+# pass through; anything trendseries cannot handle falls back to the raw value.
+deseason_vec <- function(v, dates) {
+  ok <- !is.na(v)
+  out <- rep(NA_real_, length(v))
+  if (sum(ok) < 36 || !requireNamespace("trendseries", quietly = TRUE)) {
+    return(v)
+  }
+  adj <- tryCatch({
+    res <- trendseries::deseason_series(
+      data.frame(date = dates[ok], value = v[ok]),
+      methods = "stl",
+      .quiet = TRUE
+    )
+    res$seasadj_stl
+  }, error = function(e) NULL)
+  if (is.null(adj) || length(adj) != sum(ok)) return(v)
+  out[ok] <- adj
+  out
+}
+
+# Seasonal adjustment (`sa`), STL trend of the adjusted series (`trend`) and
+# the 12-month comparison (`yoy`, % for levels and pp for rates), per series.
+prep_bcb_activity <- function(df) {
+  make_prep("bcb_activity", c("date", "series", "value"))(df)
+  if (nrow(df) == 0) return(df)
+
+  df |>
+    dplyr::group_by(series) |>
+    dplyr::group_modify(~ {
+      d <- dplyr::arrange(.x, date)
+      d$sa <- if (isTRUE(d$sa_source[1])) {
+        d$value
+      } else {
+        deseason_vec(d$value, d$date)
+      }
+      d$trend <- stl_trend_vec(d$sa, d$date)
+      d$yoy <- if (identical(d$kind[1], "rate")) {
+        d$sa - dplyr::lag(d$sa, 12)
+      } else {
+        (d$sa / dplyr::lag(d$sa, 12) - 1) * 100
+      }
+      d
+    }) |>
+    dplyr::ungroup()
+}
+
+# Activity helpers ------------------------------------------------------------
+
+# One activity series as date + value, with `metric` picking the column:
+# "sa" (seasonally adjusted level), "raw" (as published), "trend" (STL trend of
+# the adjusted series) or "yoy".
+activity_pick <- function(act, series, metric = "sa") {
+  col <- switch(metric, sa = "sa", raw = "value", trend = "trend", yoy = "yoy", "sa")
+  d <- dplyr::filter(act, series == !!series)
+  if (nrow(d) == 0) return(data.frame(date = as.Date(character()), value = numeric()))
+  d |>
+    dplyr::arrange(date) |>
+    dplyr::transmute(date, value = .data[[col]])
+}
+
+# Metadata row for one activity series (label, unit, kind).
+activity_meta <- function(series) {
+  as.list(SGS_ATIVIDADE[match(series, SGS_ATIVIDADE$series), ])
+}
+
+# Y-axis label for a series under the selected metric. The 12-month view is a %
+# change for levels and a pp difference for rates.
+activity_unit <- function(series, metric = "sa") {
+  m <- activity_meta(series)
+  if (identical(metric, "yoy")) {
+    if (identical(m$kind, "rate")) "p.p. (12m)" else "% (12m)"
+  } else {
+    m$unit
+  }
+}
+
+# Wide date x series frame of one metric, for the multi-series comparisons.
+activity_wide <- function(act, series, labels = series, metric = "sa") {
+  cols <- lapply(seq_along(series), function(i) {
+    dplyr::rename(activity_pick(act, series[i], metric), !!labels[i] := value)
+  })
+  Reduce(function(a, b) dplyr::full_join(a, b, by = "date"), cols) |>
+    dplyr::arrange(date)
+}
+
+# Rebase a wide frame to 100 at the first date where every column is observed.
+rebase_100 <- function(df, cols) {
+  present <- intersect(cols, names(df))
+  d <- dplyr::arrange(df, date)
+  complete <- which(stats::complete.cases(d[present]))
+  if (length(complete) == 0) return(d)
+  base <- complete[1]
+  for (cl in present) d[[cl]] <- d[[cl]] / d[[cl]][base] * 100
+  d
 }
 
 # Loader ----------------------------------------------------------------------

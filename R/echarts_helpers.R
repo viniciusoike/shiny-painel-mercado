@@ -42,6 +42,18 @@ tooltip_for <- function(y_name) {
   }
 }
 
+# Tooltip formatter for the Atividade cards. Index levels and percentage-point
+# differences read better with one decimal; head counts and R$ values stay whole.
+activity_tooltip <- function(unit) {
+  if (grepl("%", unit, fixed = TRUE)) {
+    tooltip_value_formatter(digits = 1, suffix = "%")
+  } else if (grepl("índice|p\\.p\\.", unit)) {
+    tooltip_value_formatter(digits = 1)
+  } else {
+    tooltip_value_formatter(digits = 0)
+  }
+}
+
 # Tooltip, legend, grid, time axis, zero markline, datazoom and toolbox.
 # window_start (Date or NULL) sets the initial zoom; NULL shows everything.
 # zero_line is for variables centered on zero (% changes); index levels skip it.
@@ -478,13 +490,14 @@ echart_share_bars <- function(df, cols, labels = cols,
 
 # Several named series from a wide df (date + one column per series).
 echart_wide_lines <- function(df, cols, y_name, window_start = NULL,
-                              zero_line = FALSE) {
+                              zero_line = FALSE, tooltip_fmt = NULL) {
 
   d <- dplyr::arrange(df, date)
   present <- intersect(cols, names(d))
   if (length(present) == 0 || nrow(d) == 0) return(echart_empty())
 
+  fmt <- if (is.null(tooltip_fmt)) tooltip_for(y_name) else tooltip_fmt
   echarts4r::e_charts(d, date) |>
     add_lines(present, get_color_palette(length(present))) |>
-    echart_finish(y_name, window_start, zero_line = zero_line)
+    echart_finish(y_name, window_start, zero_line = zero_line, tooltip_fmt = fmt)
 }

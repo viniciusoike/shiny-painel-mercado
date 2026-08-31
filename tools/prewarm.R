@@ -16,7 +16,7 @@
 source(here::here("R", "utils.R"))
 source(here::here("R", "_setup.R"))
 
-datasets <- c("rppi", "bcb_series", "bcb_selic",
+datasets <- c("rppi", "bcb_series", "bcb_selic", "bcb_activity",
               "abecip_units", "secovi", "abrainc")
 
 results <- vapply(datasets, function(name) {

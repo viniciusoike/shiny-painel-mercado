@@ -90,6 +90,7 @@ filter_group <- function(label, ..., class = NULL, style = NULL) {
 # Trend-chart card module. Renders the faint-raw + bold-STL trend chart used
 # across every dense tab. `title = NULL` in the UI draws a reactive title that
 # the server fills via the `title` reactive; pass a string for a static one.
+# `tag = NULL` does the same for the unit badge.
 trend_card_ui <- function(id, title, tag, height = "260px") {
   ns <- shiny::NS(id)
   ttl <- if (is.null(title)) {
@@ -97,23 +98,44 @@ trend_card_ui <- function(id, title, tag, height = "260px") {
   } else {
     title
   }
-  chart_card(ttl, tag, output_id = ns("chart"), height = height)
+  badge <- if (is.null(tag)) {
+    shiny::textOutput(ns("tag"), inline = TRUE)
+  } else {
+    tag
+  }
+  chart_card(ttl, badge, output_id = ns("chart"), height = height)
 }
 
+# `y_name`, `raw_name` and `zero_line` take either a constant or a reactive,
+# so a card can follow a metric chip that changes the unit it plots.
 trend_card_server <- function(
   id,
   data,
   y_name,
   raw_name = "Mensal",
   window = shiny::reactive(NULL),
-  title = NULL
+  title = NULL,
+  tag = NULL,
+  zero_line = FALSE,
+  tooltip_fmt = NULL
 ) {
+  resolve <- function(x) if (is.function(x)) x() else x
   shiny::moduleServer(id, function(input, output, session) {
     output$chart <- echarts4r::renderEcharts4r({
-      echart_trend_single(data(), y_name, raw_name, window())
+      echart_trend_single(
+        data(),
+        resolve(y_name),
+        resolve(raw_name),
+        window(),
+        zero_line = resolve(zero_line),
+        tooltip_fmt = resolve(tooltip_fmt)
+      )
     })
     if (!is.null(title)) {
       output$title <- shiny::renderText(title())
+    }
+    if (!is.null(tag)) {
+      output$tag <- shiny::renderText(resolve(tag))
     }
   })
 }
@@ -405,6 +427,102 @@ page_macro <- shiny::tagList(
   )
 )
 
+# Atividade -------------------------------------------------------------------
+
+# Métrica chip -> column served by activity_pick().
+ATIVIDADE_METRICA <- c(
+  "Nível (dessaz.)" = "sa",
+  "Var. 12m"        = "yoy"
+)
+
+# A trend card for one SGS_ATIVIDADE series. Title comes from the registry;
+# the unit badge is reactive because it follows the Métrica chip.
+activity_card_ui <- function(series) {
+  trend_card_ui(paste0("ativ_", series), activity_meta(series)$label, NULL)
+}
+
+page_atividade <- shiny::tagList(
+  page_header(
+    "Atividade",
+    "Emprego, renda e produção — séries do Banco Central (SGS)"
+  ),
+  shiny::div(
+    class = "filter-bar",
+    filter_group(
+      "Métrica",
+      class = "filter-chips",
+      shiny::radioButtons(
+        "ativ_metric",
+        NULL,
+        inline = TRUE,
+        choices = ATIVIDADE_METRICA,
+        selected = "sa"
+      )
+    ),
+    period_filter("ativ_period")
+  ),
+  bslib::layout_columns(
+    col_widths = c(6, 6),
+    activity_card_ui("pnad_ocupados"),
+    activity_card_ui("pnad_desocupacao")
+  ),
+  bslib::layout_columns(
+    col_widths = c(6, 6),
+    activity_card_ui("emprego_formal"),
+    activity_card_ui("emprego_formal_construcao")
+  ),
+  bslib::layout_columns(
+    col_widths = c(6, 6),
+    activity_card_ui("pnad_forca_trabalho"),
+    chart_card(
+      "Emprego Formal — Total vs. Construção",
+      "tendência · índice 100",
+      output_id = "ativ_emprego_cmp",
+      height = "260px"
+    )
+  ),
+  bslib::layout_columns(
+    col_widths = c(6, 6),
+    activity_card_ui("massa_rendimento"),
+    activity_card_ui("rendimento_medio")
+  ),
+  bslib::layout_columns(
+    col_widths = c(6, 6),
+    activity_card_ui("renda_disponivel"),
+    chart_card(
+      "Renda — Massa vs. Renda Disponível vs. Varejo",
+      "tendência · índice 100",
+      output_id = "ativ_renda_cmp",
+      height = "260px"
+    )
+  ),
+  bslib::layout_columns(
+    col_widths = c(6, 6),
+    activity_card_ui("ipi_geral"),
+    activity_card_ui("ipi_construcao")
+  ),
+  bslib::layout_columns(
+    col_widths = c(6, 6),
+    activity_card_ui("ipi_duraveis"),
+    activity_card_ui("ibc_br")
+  ),
+  bslib::layout_columns(
+    col_widths = c(6, 6),
+    activity_card_ui("varejo"),
+    activity_card_ui("varejo_material_construcao")
+  ),
+  bslib::layout_columns(
+    col_widths = c(6, 6),
+    activity_card_ui("pms_servicos"),
+    chart_card(
+      "Construção — Produção de Insumos vs. Vendas de Material",
+      "tendência · índice 100",
+      output_id = "ativ_construcao_cmp",
+      height = "260px"
+    )
+  )
+)
+
 page_saopaulo <- shiny::tagList(
   page_header(
     "São Paulo",
@@ -611,6 +729,7 @@ ekio_sidebar <- bslib::sidebar(
       ekio_nav_item("precos", "Preços", "▤"),
       ekio_nav_item("credito", "Crédito", "◈"),
       ekio_nav_item("mercado", "Mercado", "▦"),
+      ekio_nav_item("atividade", "Atividade", "◍"),
       ekio_nav_item("macro", "Macro", "◎")
     ),
     ekio_nav_section(
@@ -662,6 +781,7 @@ ui <- bslib::page_sidebar(
       bslib::nav_panel_hidden("precos", page_precos),
       bslib::nav_panel_hidden("credito", page_credito),
       bslib::nav_panel_hidden("mercado", page_mercado),
+      bslib::nav_panel_hidden("atividade", page_atividade),
       bslib::nav_panel_hidden("macro", page_macro),
       bslib::nav_panel_hidden("saopaulo", page_saopaulo),
       bslib::nav_panel_hidden("sobre", page_sobre)
@@ -683,7 +803,8 @@ initial_data <- list(
   selic = load_dataset("bcb_selic", force = FALSE),
   sbpe = load_dataset("abecip_units", force = FALSE),
   secovi = load_dataset("secovi", force = FALSE),
-  abrainc = load_dataset("abrainc", force = FALSE)
+  abrainc = load_dataset("abrainc", force = FALSE),
+  activity = load_dataset("bcb_activity", force = FALSE)
 )
 
 # Server ----------------------------------------------------------------------
@@ -698,6 +819,7 @@ server <- function(input, output, session) {
   sbpe_units <- shiny::reactive(initial_data$sbpe)
   secovi_data <- shiny::reactive(initial_data$secovi)
   abrainc_data <- shiny::reactive(initial_data$abrainc)
+  activity_data <- shiny::reactive(initial_data$activity)
 
   splits <- shiny::reactive({
     split_rppi(rppi_data())
@@ -1534,6 +1656,74 @@ server <- function(input, output, session) {
       c("Lançamentos", "Vendas"),
       "R$ milhões · soma 12m",
       mkt_win()
+    )
+  })
+
+  # Atividade (BCB SGS) ----
+
+  ativ_metric <- shiny::reactive(input$ativ_metric %||% "sa")
+  ativ_win <- shiny::reactive(win_from(
+    input$ativ_period,
+    activity_data()$date
+  ))
+
+  # One card per registry series. Data, unit badge, y-axis label and tooltip
+  # all follow the Métrica chip, so each card serves both the seasonally
+  # adjusted level and the 12-month comparison.
+  for (nm in SGS_ATIVIDADE$series) {
+    local({
+      series <- nm
+      unit <- shiny::reactive(activity_unit(series, ativ_metric()))
+      trend_card_server(
+        paste0("ativ_", series),
+        shiny::reactive(
+          activity_pick(activity_data(), series, ativ_metric())
+        ),
+        y_name = unit,
+        raw_name = function() {
+          if (identical(ativ_metric(), "yoy")) "Var. 12m" else "Dessaz."
+        },
+        window = ativ_win,
+        tag = unit,
+        zero_line = function() identical(ativ_metric(), "yoy"),
+        tooltip_fmt = function() activity_tooltip(unit())
+      )
+    })
+  }
+
+  # Multi-series comparisons. The STL trend keeps several series legible in one
+  # frame, rebased to 100 at the start of the selected period so units that
+  # differ (head counts, R$, index points) share an axis.
+  ativ_cmp <- function(series, labels) {
+    d <- activity_wide(activity_data(), series, labels, "trend")
+    start <- ativ_win()
+    if (!is.null(start)) d <- dplyr::filter(d, date >= start)
+    echart_wide_lines(
+      rebase_100(d, labels),
+      labels,
+      "índice (100 = início da janela)",
+      tooltip_fmt = activity_tooltip("índice")
+    )
+  }
+
+  output$ativ_emprego_cmp <- echarts4r::renderEcharts4r({
+    ativ_cmp(
+      c("emprego_formal", "emprego_formal_construcao"),
+      c("Total", "Construção")
+    )
+  })
+
+  output$ativ_renda_cmp <- echarts4r::renderEcharts4r({
+    ativ_cmp(
+      c("massa_rendimento", "renda_disponivel", "varejo"),
+      c("Massa de rendimento", "Renda disponível", "Varejo")
+    )
+  })
+
+  output$ativ_construcao_cmp <- echarts4r::renderEcharts4r({
+    ativ_cmp(
+      c("ipi_construcao", "varejo_material_construcao"),
+      c("Produção de insumos", "Vendas de material")
     )
   })
 
