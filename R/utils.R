@@ -30,13 +30,6 @@ fmt_num_br <- function(x, digits = 2) {
   out
 }
 
-# Trailing 12-month accumulated % from a vector of monthly % changes.
-acum12m_pct <- function(monthly_pct) {
-  logr <- log1p(monthly_pct / 100)
-  acc <- stats::filter(logr, rep(1, 12), sides = 1)
-  as.numeric(expm1(acc) * 100)
-}
-
 # KPI deltas -------------------------------------------------------------------
 
 # Direction of a delta for coloring a KPI card. Guards against the length-0
