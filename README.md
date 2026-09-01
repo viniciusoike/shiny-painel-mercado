@@ -36,7 +36,7 @@ The app is **read-only over a pre-warmed cache** — it never refetches at runti
 To publish fresh data:
 
 ```r
-Rscript tools/prewarm.R   # force-fetch every dataset, refresh .cache/ and data-cache/
+Rscript tools/prewarm.R   # update every dataset, refresh .cache/ and data-cache/
 ```
 
 ```sh

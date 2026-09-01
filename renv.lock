@@ -3691,6 +3691,12 @@
       "Maintainer": "Thomas Lin Pedersen <thomas.pedersen@posit.co>",
       "Repository": "CRAN"
     },
+    "seasonal": {
+      "Package": "seasonal",
+      "Version": "1.10.0",
+      "Source": "Repository",
+      "Repository": "CRAN"
+    },
     "selectr": {
       "Package": "selectr",
       "Version": "0.5-1",
@@ -4286,11 +4292,11 @@
     },
     "trendseries": {
       "Package": "trendseries",
-      "Version": "1.4.0",
+      "Version": "1.5.0",
       "Source": "Repository",
       "Type": "Package",
       "Title": "Extract Trends from Time Series",
-      "Description": "Provides a unified interface to extract trends, cycles, and seasonal components from monthly and quarterly time series using established econometric filters and smoothing methods, with frequency-aware defaults for common economic frequencies.",
+      "Description": "Provides a unified interface to extract trends, cycles, and seasonal components from monthly and quarterly time series using established econometric filters and smoothing methods, with frequency-aware defaults for common economic frequencies. Rolling and year-to-date aggregations are also available, including the compounded accumulation of rates of change.",
       "License": "MIT + file LICENSE",
       "Encoding": "UTF-8",
       "Language": "en-US",
@@ -4313,6 +4319,7 @@
         "R (>= 4.1.0)"
       ],
       "RoxygenNote": "7.3.3",
+      "Roxygen": "list(markdown = TRUE)",
       "Suggests": [
         "dplyr",
         "ggplot2 (>= 4.0.0)",
@@ -4327,10 +4334,13 @@
       "VignetteBuilder": "knitr",
       "Config/testthat/edition": "3",
       "Authors@R": "person(\"Vinicius\", \"Oike\", , \"viniciusoike@gmail.com\", role = c(\"aut\", \"cre\", \"cph\"), comment = c(ORCID = \"0009-0005-8015-9189\"))",
+      "Repository": "https://viniciusoike.r-universe.dev",
+      "RemoteUrl": "https://github.com/viniciusoike/trendseries",
+      "RemoteRef": "HEAD",
+      "RemoteSha": "286c2c34b97d5137fc92e79449c1d52b1f3ab670",
       "NeedsCompilation": "no",
       "Author": "Vinicius Oike [aut, cre, cph] (ORCID: <https://orcid.org/0009-0005-8015-9189>)",
-      "Maintainer": "Vinicius Oike <viniciusoike@gmail.com>",
-      "Repository": "CRAN"
+      "Maintainer": "Vinicius Oike <viniciusoike@gmail.com>"
     },
     "tsbox": {
       "Package": "tsbox",
@@ -4634,6 +4644,12 @@
       "NeedsCompilation": "no",
       "Author": "Jim Hester [aut], Lionel Henry [aut, cre], Kirill Müller [aut], Kevin Ushey [aut], Hadley Wickham [aut], Winston Chang [aut], Jennifer Bryan [ctb], Richard Cotton [ctb], Posit Software, PBC [cph, fnd]",
       "Maintainer": "Lionel Henry <lionel@posit.co>",
+      "Repository": "CRAN"
+    },
+    "x13binary": {
+      "Package": "x13binary",
+      "Version": "1.1.61.2",
+      "Source": "Repository",
       "Repository": "CRAN"
     },
     "xfun": {
