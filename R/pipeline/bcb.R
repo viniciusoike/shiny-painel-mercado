@@ -4,13 +4,13 @@
 # BCB preparation and ingestion ----------------------------------------------
 
 # bcb_series carries Selic as a daily series; the app wants one value a month.
-prep_bcb_selic <- function(df) {
+prep_bcb_selic <- function(dat) {
   if (
-    all(c("date", "value") %in% names(df)) &&
-      !"name_simplified" %in% names(df)
+    all(c("date", "value") %in% names(dat)) &&
+      !"name_simplified" %in% names(dat)
   ) {
     return(
-      df |>
+      dat |>
         tibble::as_tibble() |>
         dplyr::mutate(date = lubridate::floor_date(.data$date, "month")) |>
         dplyr::group_by(.data$date) |>
@@ -21,10 +21,10 @@ prep_bcb_selic <- function(df) {
   }
 
   need <- c("date", "name_simplified", "value")
-  if (is.null(df) || nrow(df) == 0 || !all(need %in% names(df))) {
+  if (is.null(dat) || nrow(dat) == 0 || !all(need %in% names(dat))) {
     return(tibble::tibble(date = as.Date(character()), value = numeric()))
   }
-  sel <- df[df$name_simplified == "selic", c("date", "value")]
+  sel <- dat[dat$name_simplified == "selic", c("date", "value")]
   if (nrow(sel) == 0) {
     return(tibble::tibble(date = as.Date(character()), value = numeric()))
   }
@@ -263,10 +263,10 @@ deseason_vec <- function(v, dates) {
 
 # Seasonal adjustment (`sa`), STL trend of the adjusted series (`trend`) and
 # the 12-month comparison (`yoy`, % for levels and pp for rates), per series.
-prep_bcb_activity <- function(df) {
-  make_prep("bcb_activity", c("date", "series", "value"))(df)
-  if (nrow(df) == 0) {
-    return(df)
+prep_bcb_activity <- function(dat) {
+  dat <- make_prep("bcb_activity", c("date", "series", "value"))(dat)
+  if (nrow(dat) == 0) {
+    return(dat)
   }
 
   policy_columns <- c(
@@ -279,14 +279,14 @@ prep_bcb_activity <- function(df) {
     "seasonal",
     "deflator"
   )
-  df <- df |>
+  dat <- dat |>
     dplyr::select(-dplyr::any_of(policy_columns)) |>
     dplyr::left_join(
       dplyr::select(SGS_ATIVIDADE, "series", dplyr::all_of(policy_columns)),
       by = "series"
     )
 
-  df |>
+  dat |>
     dplyr::group_by(series) |>
     dplyr::group_modify(
       ~ {

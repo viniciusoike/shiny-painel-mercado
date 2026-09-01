@@ -99,12 +99,12 @@ kpi_card <- function(
 # Yearly accumulated table -----------------------------------------------------
 
 # Scrollable year × index table (Ano | INCC | IPCA | IGMI-R | IVAR), most recent
-# year first. `df` is the wide frame from yearly_accum_data(); NA cells show "—".
-yearly_accum_table <- function(df) {
-  if (is.null(df) || nrow(df) == 0) {
+# year first. `dat` is the wide frame from yearly_accum_data(); NA cells show "—".
+yearly_accum_table <- function(dat) {
+  if (is.null(dat) || nrow(dat) == 0) {
     return(shiny::p("Sem dados."))
   }
-  d <- df[order(df$year, decreasing = TRUE), , drop = FALSE]
+  d <- dat[order(dat$year, decreasing = TRUE), , drop = FALSE]
 
   num_cell <- function(x) {
     if (is.na(x)) {
@@ -145,21 +145,21 @@ yearly_accum_table <- function(df) {
 # Secovi dormitório table ------------------------------------------------------
 
 # Annual sales units per dormitório (Ano | 1..4 dorm | Total | Δ a/a), most
-# recent year first. `df` is the wide frame from secovi_rooms_yearly(); the
+# recent year first. `dat` is the wide frame from secovi_rooms_yearly(); the
 # trend column is the year-over-year % change of the Total. NA cells show "—".
 secovi_rooms_table <- function(
-  df,
+  dat,
   cols = c("1 dorm", "2 dorm", "3 dorm", "4 dorm")
 ) {
-  if (is.null(df) || nrow(df) == 0) {
+  if (is.null(dat) || nrow(dat) == 0) {
     return(shiny::p("Sem dados."))
   }
-  present <- intersect(cols, names(df))
+  present <- intersect(cols, names(dat))
   if (length(present) == 0) {
     return(shiny::p("Sem dados."))
   }
 
-  d <- df[order(df$year), , drop = FALSE]
+  d <- dat[order(dat$year), , drop = FALSE]
   d$Total <- rowSums(as.matrix(d[present]), na.rm = TRUE)
   d$Total[rowSums(!is.na(as.matrix(d[present]))) == 0] <- NA_real_
   d$yoy <- c(NA_real_, d$Total[-1] / d$Total[-nrow(d)] - 1)
@@ -212,8 +212,8 @@ secovi_rooms_table <- function(
 # Last-month summary per city (mockup "Resumo por Cidade"). sale/rent are
 # long RPPI tibbles already filtered to a single source.
 city_summary_table <- function(sale, rent, cities) {
-  last_obs <- function(df) {
-    df |>
+  last_obs <- function(dat) {
+    dat |>
       dplyr::filter(name_muni %in% cities, !is.na(acum12m)) |>
       dplyr::group_by(name_muni) |>
       dplyr::filter(date == max(date)) |>

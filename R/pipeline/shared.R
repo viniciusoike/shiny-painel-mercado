@@ -16,11 +16,11 @@ stl_trend_vec <- function(v, dates, interpolate = TRUE) {
 }
 
 # STL on the monthly index, then 12-month % change of the trend component.
-add_stl_trend <- function(df) {
-  df <- dplyr::arrange(df, date)
-  df$trend <- stl_trend_vec(df$index, df$date)
-  df$trend_yoy <- (df$trend / dplyr::lag(df$trend, 12) - 1) * 100
-  df
+add_stl_trend <- function(dat) {
+  dat <- dplyr::arrange(dat, date)
+  dat$trend <- stl_trend_vec(dat$index, dat$date)
+  dat$trend_yoy <- (dat$trend / dplyr::lag(dat$trend, 12) - 1) * 100
+  dat
 }
 
 # Dataset preps ---------------------------------------------------------------
@@ -30,15 +30,15 @@ add_stl_trend <- function(df) {
 make_prep <- function(name, required) {
   force(name)
   force(required)
-  function(df) {
-    missing <- setdiff(required, names(df))
+  function(dat) {
+    missing <- setdiff(required, names(dat))
     if (length(missing) > 0) {
       cli::cli_abort(c(
         "Dataset {.val {name}} has an unexpected schema.",
         "x" = "Missing: {.field {missing}}.",
-        "i" = "Available: {.field {names(df)}}."
+        "i" = "Available: {.field {names(dat)}}."
       ))
     }
-    df
+    tibble::as_tibble(dat)
   }
 }

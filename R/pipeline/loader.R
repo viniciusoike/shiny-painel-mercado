@@ -28,7 +28,7 @@ prepare_cached_dataset <- function(name, data) {
   prepared
 }
 
-load_dataset <- function(name, force = FALSE) {
+load_dataset <- function(name, update = FALSE) {
   spec <- SOURCE_REGISTRY[[name]]
   if (is.null(spec)) {
     cli::cli_abort(c(
@@ -38,16 +38,16 @@ load_dataset <- function(name, force = FALSE) {
   }
 
   path <- cache_path(name)
-  if (!force && file.exists(path)) {
+  if (!update && file.exists(path)) {
     return(prepare_cached_dataset(name, readRDS(path)))
   }
 
   seed <- cache_path(name, SEED_DIR)
-  if (!force && file.exists(seed)) {
+  if (!update && file.exists(seed)) {
     return(prepare_cached_dataset(name, readRDS(seed)))
   }
 
-  # The last good copy, read even under force = TRUE: an incremental fetch
+  # The last good copy, read even under update = TRUE: an incremental fetch
   # needs it to know where to resume, and it is the fallback if the fetch
   # comes back empty.
   previous <- tryCatch(
@@ -123,6 +123,6 @@ load_dataset <- function(name, force = FALSE) {
   out
 }
 
-load_rppi <- function(force = FALSE) {
-  load_dataset("rppi", force = force)
+load_rppi <- function(update = FALSE) {
+  load_dataset("rppi", update = update)
 }

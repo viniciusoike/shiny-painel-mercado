@@ -3,15 +3,13 @@
 
 # RPPI preparation ------------------------------------------------------------
 
-prep_rppi <- function(df) {
-  # realestatebr >= 0.4 renamed category -> transaction_type
-  if ("transaction_type" %in% names(df) && !"category" %in% names(df)) {
-    df <- dplyr::rename(df, category = transaction_type)
-  }
+prep_rppi <- function(dat) {
+  dat <- make_prep(
+    "rppi",
+    c("date", "name_muni", "source", "category", "index")
+  )(dat)
 
-  make_prep("rppi", c("date", "name_muni", "source", "category", "index"))(df)
-
-  df |>
+  dat |>
     dplyr::group_by(source, name_muni, category) |>
     dplyr::group_modify(~ add_stl_trend(.x)) |>
     dplyr::ungroup() |>

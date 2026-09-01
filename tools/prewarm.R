@@ -21,7 +21,7 @@ datasets <- c("rppi", "bcb_series", "bcb_selic", "bcb_activity",
 
 results <- vapply(datasets, function(name) {
   tryCatch({
-    d <- load_dataset(name, force = TRUE)  # bypass cache, write fresh .rds
+    d <- load_dataset(name, update = TRUE)  # bypass cache, write fresh .rds
     if (nrow(d) == 0) {
       sprintf("WARN %-14s 0 rows (fetch returned empty — not cached)", name)
     } else {

@@ -751,13 +751,13 @@ ui <- bslib::page_sidebar(
 # publish fresh data, re-run prewarm and redeploy. Each session reads these
 # objects through trivial reactives.
 initial_data <- list(
-  rppi = load_rppi(force = FALSE),
-  bcb = load_dataset("bcb_series", force = FALSE),
-  selic = load_dataset("bcb_selic", force = FALSE),
-  sbpe = load_dataset("abecip_units", force = FALSE),
-  secovi = load_dataset("secovi", force = FALSE),
-  abrainc = load_dataset("abrainc", force = FALSE),
-  activity = load_dataset("bcb_activity", force = FALSE)
+  rppi = load_rppi(update = FALSE),
+  bcb = load_dataset("bcb_series", update = FALSE),
+  selic = load_dataset("bcb_selic", update = FALSE),
+  sbpe = load_dataset("abecip_units", update = FALSE),
+  secovi = load_dataset("secovi", update = FALSE),
+  abrainc = load_dataset("abrainc", update = FALSE),
+  activity = load_dataset("bcb_activity", update = FALSE)
 ) |>
   apply_inflation_adjustment()
 
@@ -965,8 +965,8 @@ server <- function(input, output, session) {
     bcb <- bcb_data()
 
     # RPPI 12m card from the acum12m fraction (muni = NA for national IVAR).
-    rppi_kpi <- function(df, src, muni, label, color) {
-      d <- dplyr::filter(df, source == src)
+    rppi_kpi <- function(dat, src, muni, label, color) {
+      d <- dplyr::filter(dat, source == src)
       d <- if (is.na(muni)) {
         dplyr::filter(d, is.na(name_muni))
       } else {
@@ -1020,8 +1020,8 @@ server <- function(input, output, session) {
     bcb <- bcb_data()
 
     # last two non-NA obs of a series, sorted by date
-    tail2 <- function(df, col) {
-      d <- df[!is.na(df[[col]]), ]
+    tail2 <- function(dat, col) {
+      d <- dat[!is.na(dat[[col]]), ]
       d <- d[order(d$date), ]
       utils::tail(d[[col]], 2)
     }
@@ -1055,8 +1055,8 @@ server <- function(input, output, session) {
     }
 
     # 4/5. RPPI venda/aluguel SP (acum12m fraction)
-    rppi_card <- function(df, label, color) {
-      d <- dplyr::filter(df, name_muni == "São Paulo")
+    rppi_card <- function(dat, label, color) {
+      d <- dplyr::filter(dat, name_muni == "São Paulo")
       v <- tail2(d, "acum12m")
       kpi_card(
         label,

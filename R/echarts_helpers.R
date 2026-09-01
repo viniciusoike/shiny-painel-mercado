@@ -134,11 +134,11 @@ add_lines <- function(e, series, colors, dashed = FALSE, width = 2) {
 
 # Long tibble -> line chart, one series per index source for one city.
 # When variable == "index", overlays the STL trend per source (dashed).
-echart_series <- function(df, city, variable_label, window_start = NULL) {
+echart_series <- function(dat, city, variable_label, window_start = NULL) {
   stopifnot(variable_label %in% names(vlvar))
   sel_var <- unname(vlvar[variable_label])
 
-  d <- df |>
+  d <- dat |>
     dplyr::filter(name_muni == city, !is.na(.data[[sel_var]])) |>
     dplyr::arrange(date)
 
@@ -201,13 +201,13 @@ echart_series <- function(df, city, variable_label, window_start = NULL) {
 
 # One line per city for a single source/variable (defaults: FipeZap, acum12m).
 echart_compare <- function(
-  df,
+  dat,
   cities,
   sel_var = "acum12m",
   y_name = "Acumulado 12 Meses (%)",
   window_start = NULL
 ) {
-  d <- df |>
+  d <- dat |>
     dplyr::filter(name_muni %in% cities, !is.na(.data[[sel_var]])) |>
     dplyr::arrange(date)
 
@@ -239,18 +239,18 @@ echart_palette <- function(n) get_color_palette(n)
 
 
 # Single monthly series: faint raw line + bold prepared trend.
-# `df` has columns date, value and trend. `tooltip_fmt = NULL` falls back to the
+# `dat` has columns date, value and trend. `tooltip_fmt = NULL` falls back to the
 # y_name-derived formatter from tooltip_for(); pass an explicit formatter to
 # override (e.g. for "Meses" which needs 1 decimal but no % suffix).
 echart_trend_single <- function(
-  df,
+  dat,
   y_name,
   raw_name = "Mensal",
   window_start = NULL,
   zero_line = FALSE,
   tooltip_fmt = NULL
 ) {
-  d <- df |>
+  d <- dat |>
     dplyr::filter(!is.na(value)) |>
     dplyr::arrange(date) |>
     dplyr::rename(!!raw_name := value)
@@ -294,14 +294,14 @@ echart_trend_single <- function(
 }
 
 # Grouped (dodged) yearly bars: a category x-axis of years with one bar series
-# per index. `df` is wide (year + one numeric column per series in `cols`).
+# per index. `dat` is wide (year + one numeric column per series in `cols`).
 echart_yearly_bars <- function(
-  df,
+  dat,
   cols,
   labels = cols,
   y_name = "Acum. no ano (%)"
 ) {
-  d <- df[order(df$year), , drop = FALSE]
+  d <- dat[order(dat$year), , drop = FALSE]
   present <- intersect(cols, names(d))
   if (length(present) == 0 || nrow(d) == 0) {
     return(echart_empty())
@@ -347,8 +347,8 @@ echart_yearly_bars <- function(
 
 # Stacked area: one filled band per column of a wide date frame (the mix of a
 # total over time). Bands are drawn in `cols` order, bottom to top.
-echart_stacked_area <- function(df, cols, y_name, window_start = NULL) {
-  d <- dplyr::arrange(df, date)
+echart_stacked_area <- function(dat, cols, y_name, window_start = NULL) {
+  d <- dplyr::arrange(dat, date)
   present <- intersect(cols, names(d))
   if (length(present) == 0 || nrow(d) == 0) {
     return(echart_empty())
@@ -374,15 +374,15 @@ echart_stacked_area <- function(df, cols, y_name, window_start = NULL) {
 }
 
 
-# 100% stacked bars: each row (year) normalized so its bands sum to 100. `df`
+# 100% stacked bars: each row (year) normalized so its bands sum to 100. `dat`
 # is a wide frame (year + one share column per band, already in percent).
 echart_share_bars <- function(
-  df,
+  dat,
   cols,
   labels = cols,
   y_name = "Participação (%)"
 ) {
-  d <- df[order(df$year), , drop = FALSE]
+  d <- dat[order(dat$year), , drop = FALSE]
   present <- intersect(cols, names(d))
   if (length(present) == 0 || nrow(d) == 0) {
     return(echart_empty())
@@ -424,16 +424,16 @@ echart_share_bars <- function(
     echarts4r::e_toolbox_feature(feature = "saveAsImage")
 }
 
-# Several named series from a wide df (date + one column per series).
+# Several named series from a wide dat (date + one column per series).
 echart_wide_lines <- function(
-  df,
+  dat,
   cols,
   y_name,
   window_start = NULL,
   zero_line = FALSE,
   tooltip_fmt = NULL
 ) {
-  d <- dplyr::arrange(df, date)
+  d <- dplyr::arrange(dat, date)
   present <- intersect(cols, names(d))
   if (length(present) == 0 || nrow(d) == 0) {
     return(echart_empty())

@@ -63,9 +63,9 @@ activity_wide <- function(act, series, labels = series, metric = "sa") {
 }
 
 # Rebase a wide frame to 100 at the first date where every column is observed.
-rebase_100 <- function(df, cols) {
-  present <- intersect(cols, names(df))
-  d <- dplyr::arrange(df, date)
+rebase_100 <- function(dat, cols) {
+  present <- intersect(cols, names(dat))
+  d <- dplyr::arrange(dat, date)
   complete <- which(stats::complete.cases(d[present]))
   if (length(complete) == 0) {
     return(d)
@@ -79,10 +79,10 @@ rebase_100 <- function(df, cols) {
 
 # RPPI helpers ----------------------------------------------------------------
 
-split_rppi <- function(df) {
+split_rppi <- function(dat) {
   list(
-    rent = dplyr::filter(df, category == "rent"),
-    sale = dplyr::filter(df, category == "sale")
+    rent = dplyr::filter(dat, category == "rent"),
+    sale = dplyr::filter(dat, category == "sale")
   )
 }
 
@@ -132,8 +132,8 @@ yearly_accum_data <- function(bcb, sp) {
       dplyr::group_by(year) |>
       dplyr::summarise(v = (prod(1 + value / 100) - 1) * 100, .groups = "drop")
   }
-  idx_year <- function(df) {
-    df |>
+  idx_year <- function(dat) {
+    dat |>
       dplyr::filter(!is.na(index)) |>
       dplyr::arrange(date) |>
       dplyr::mutate(year = lubridate::year(date)) |>
@@ -174,8 +174,8 @@ yearly_accum_data <- function(bcb, sp) {
   )
 }
 
-city_choices <- function(df) {
-  cities <- sort(unique(df$name_muni))
+city_choices <- function(dat) {
+  cities <- sort(unique(dat$name_muni))
   # data uses "Brazil" and title-case "Rio De Janeiro"
   preferred <- c(
     "Brazil",
@@ -294,12 +294,12 @@ secovi_rooms_yearly <- function(sec) {
 
 # Convert an annual wide frame (year + band cols) to within-year percentage
 # shares (each year's bands sum to 100; all-NA years stay NA).
-rooms_to_shares <- function(df, cols = names(SECOVI_ROOMS)) {
-  present <- intersect(cols, names(df))
-  m <- as.matrix(df[present])
+rooms_to_shares <- function(dat, cols = names(SECOVI_ROOMS)) {
+  present <- intersect(cols, names(dat))
+  m <- as.matrix(dat[present])
   tot <- rowSums(m, na.rm = TRUE)
   tot[tot == 0] <- NA_real_
-  out <- tibble::tibble(year = df$year)
+  out <- tibble::tibble(year = dat$year)
   out[present] <- round(sweep(m, 1, tot, "/") * 100, 1)
   out
 }
