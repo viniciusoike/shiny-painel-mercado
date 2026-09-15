@@ -33,7 +33,10 @@ prepare_cached_dataset <- function(name, data) {
   prepared
 }
 
-load_dataset <- function(name, update = FALSE) {
+# `strict = FALSE` keeps app startup resilient by falling back to the last good
+# cache. Scheduled refreshes use `strict = TRUE` so fetch, preparation, empty
+# output, and cache-write failures stop publication.
+load_dataset <- function(name, update = FALSE, strict = FALSE) {
   spec <- SOURCE_REGISTRY[[name]]
   if (is.null(spec)) {
     cli::cli_abort(c(
@@ -86,6 +89,15 @@ load_dataset <- function(name, update = FALSE) {
         tibble::as_tibble()
     },
     error = function(e) {
+      if (strict) {
+        cli::cli_abort(
+          c(
+            "Fetch/preparation failed for {.val {name}}.",
+            "i" = conditionMessage(e)
+          ),
+          parent = e
+        )
+      }
       cli::cli_warn(c(
         "Fetch/preparation failed for {.val {name}}.",
         "i" = conditionMessage(e)
@@ -99,6 +111,12 @@ load_dataset <- function(name, update = FALSE) {
   # return the empty frame WITHOUT caching so the next load retries instead of
   # poisoning the cache with permanent emptiness.
   if (nrow(out) == 0) {
+    if (strict) {
+      cli::cli_abort(c(
+        "Fetch for {.val {name}} returned no rows.",
+        "i" = "The cache was not updated."
+      ))
+    }
     if (!is.null(previous) && nrow(previous) > 0) {
       return(prepare_cached_dataset(name, previous))
     }
@@ -119,6 +137,15 @@ load_dataset <- function(name, update = FALSE) {
       saveRDS(out, path)
     },
     error = function(e) {
+      if (strict) {
+        cli::cli_abort(
+          c(
+            "Could not write the cache for {.val {name}}.",
+            "i" = conditionMessage(e)
+          ),
+          parent = e
+        )
+      }
       cli::cli_warn(c(
         "Could not write the cache for {.val {name}}.",
         "i" = conditionMessage(e)
