@@ -134,11 +134,11 @@ add_lines <- function(e, series, colors, dashed = FALSE, width = 2) {
 
 # Long tibble -> line chart, one series per index source for one city.
 # When variable == "index", overlays the STL trend per source (dashed).
-echart_series <- function(df, city, variable_label, window_start = NULL) {
+echart_series <- function(dat, city, variable_label, window_start = NULL) {
   stopifnot(variable_label %in% names(vlvar))
   sel_var <- unname(vlvar[variable_label])
 
-  d <- df |>
+  d <- dat |>
     dplyr::filter(name_muni == city, !is.na(.data[[sel_var]])) |>
     dplyr::arrange(date)
 
@@ -201,13 +201,13 @@ echart_series <- function(df, city, variable_label, window_start = NULL) {
 
 # One line per city for a single source/variable (defaults: FipeZap, acum12m).
 echart_compare <- function(
-  df,
+  dat,
   cities,
   sel_var = "acum12m",
   y_name = "Acumulado 12 Meses (%)",
   window_start = NULL
 ) {
-  d <- df |>
+  d <- dat |>
     dplyr::filter(name_muni %in% cities, !is.na(.data[[sel_var]])) |>
     dplyr::arrange(date)
 
@@ -234,171 +234,23 @@ echart_compare <- function(
     echart_finish(y_name, window_start)
 }
 
-# Real vs. nominal --------------------------------------------------------------
-
-# Nominal index vs. IPCA-deflated real index, both rebased to 100 at the
-# first month where the price index and IPCA overlap.
-echart_real_nominal <- function(df, ipca, window_start = NULL) {
-  if (nrow(df) == 0 || nrow(ipca) == 0) {
-    return(echart_empty())
-  }
-
-  ipca_index <- ipca |>
-    dplyr::arrange(date) |>
-    dplyr::mutate(ipca_index = cumprod(1 + value / 100)) |>
-    dplyr::select(date, ipca_index)
-
-  d <- df |>
-    dplyr::filter(!is.na(index)) |>
-    dplyr::select(date, index) |>
-    dplyr::inner_join(ipca_index, by = "date") |>
-    dplyr::arrange(date)
-
-  if (nrow(d) < 2) {
-    return(echart_empty())
-  }
-
-  d <- d |>
-    dplyr::mutate(
-      Nominal = round(index / index[1] * 100, 1),
-      `Real (IPCA)` = round(
-        index / index[1] / (ipca_index / ipca_index[1]) * 100,
-        1
-      )
-    )
-
-  colors <- get_color_palette(2)
-
-  echarts4r::e_charts(d, date) |>
-    add_lines(c("Nominal", "Real (IPCA)"), colors) |>
-    echart_finish("Índice (base 100)", window_start, zero_line = FALSE)
-}
 
 echart_palette <- function(n) get_color_palette(n)
 
-# Panorama charts --------------------------------------------------------------
 
-# STL trend (12m %) of the sale index for several cities, single source.
-echart_trend_cities <- function(
-  df,
-  cities,
-  source = "FipeZap",
-  window_start = NULL
-) {
-  d <- df |>
-    dplyr::filter(
-      name_muni %in% cities,
-      source == !!source,
-      !is.na(trend_yoy)
-    ) |>
-    dplyr::arrange(date)
-
-  if (nrow(d) == 0) {
-    return(echart_empty())
-  }
-
-  present <- intersect(cities, unique(d$name_muni))
-  colors <- echart_palette(length(present))
-
-  wide <- d |>
-    dplyr::mutate(trend_yoy = round(trend_yoy, 2)) |>
-    tidyr::pivot_wider(
-      id_cols = "date",
-      names_from = "name_muni",
-      values_from = "trend_yoy"
-    )
-
-  echarts4r::e_charts(wide, date) |>
-    add_lines(present, colors) |>
-    echart_finish("Tendência 12m (%)", window_start)
-}
-
-# Selic meta, IPCA 12m, and the real interest rate (Fisher) on one axis.
-echart_real_rate <- function(selic, ipca, window_start = NULL) {
-  if (nrow(selic) == 0 || nrow(ipca) == 0) {
-    return(echart_empty())
-  }
-
-  ipca12 <- ipca |>
-    dplyr::arrange(date) |>
-    dplyr::mutate(`IPCA 12m` = acum12m_pct(value)) |>
-    dplyr::select(date, `IPCA 12m`)
-
-  d <- selic |>
-    dplyr::transmute(date, `Selic Meta` = value) |>
-    dplyr::inner_join(ipca12, by = "date") |>
-    dplyr::filter(!is.na(`IPCA 12m`)) |>
-    dplyr::mutate(
-      `Juro Real` = round(
-        ((1 + `Selic Meta` / 100) /
-          (1 + `IPCA 12m` / 100) -
-          1) *
-          100,
-        2
-      ),
-      `Selic Meta` = round(`Selic Meta`, 2),
-      `IPCA 12m` = round(`IPCA 12m`, 2)
-    )
-
-  if (nrow(d) < 2) {
-    return(echart_empty())
-  }
-
-  colors <- get_color_palette(3)
-
-  echarts4r::e_charts(d, date) |>
-    add_lines(c("Selic Meta", "IPCA 12m", "Juro Real"), colors) |>
-    echart_finish("% a.a.", window_start)
-}
-
-# Monthly series (bar) with its STL trend overlaid (line).
-echart_volume_trend <- function(
-  df,
-  value_col,
-  y_name = "R$ bilhões",
-  window_start = NULL
-) {
-  d <- df |>
-    dplyr::filter(!is.na(.data[[value_col]])) |>
-    dplyr::arrange(date) |>
-    dplyr::transmute(date, Volume = .data[[value_col]])
-
-  if (nrow(d) < 12) {
-    return(echart_empty())
-  }
-
-  d$Tendência <- stl_trend_vec(d$Volume, d$date)
-  colors <- get_color_palette(2)
-
-  echarts4r::e_charts(d, date) |>
-    echarts4r::e_bar(
-      Volume,
-      name = "Volume mensal",
-      itemStyle = list(color = colors[1], opacity = 0.5)
-    ) |>
-    echarts4r::e_line(
-      Tendência,
-      name = "Tendência",
-      lineStyle = list(width = 2, color = colors[2]),
-      itemStyle = list(color = colors[2]),
-      symbol = "none"
-    ) |>
-    echart_finish(y_name, window_start, zero_line = FALSE)
-}
-
-# Single monthly series: faint raw line + bold STL trend (the Secovi pattern).
-# `df` has columns date + value. `tooltip_fmt = NULL` falls back to the
+# Single monthly series: faint raw line + bold prepared trend.
+# `dat` has columns date, value and trend. `tooltip_fmt = NULL` falls back to the
 # y_name-derived formatter from tooltip_for(); pass an explicit formatter to
 # override (e.g. for "Meses" which needs 1 decimal but no % suffix).
 echart_trend_single <- function(
-  df,
+  dat,
   y_name,
   raw_name = "Mensal",
   window_start = NULL,
   zero_line = FALSE,
   tooltip_fmt = NULL
 ) {
-  d <- df |>
+  d <- dat |>
     dplyr::filter(!is.na(value)) |>
     dplyr::arrange(date) |>
     dplyr::rename(!!raw_name := value)
@@ -408,11 +260,7 @@ echart_trend_single <- function(
   }
 
   color <- get_color_palette(1)
-  d$Tendência <- if (nrow(d) >= 36) {
-    stl_trend_vec(d[[raw_name]], d$date)
-  } else {
-    NA_real_
-  }
+  d$Tendência <- if ("trend" %in% names(d)) d$trend else NA_real_
 
   out <- echarts4r::e_charts(d, date) |>
     echarts4r::e_line_(
@@ -446,14 +294,14 @@ echart_trend_single <- function(
 }
 
 # Grouped (dodged) yearly bars: a category x-axis of years with one bar series
-# per index. `df` is wide (year + one numeric column per series in `cols`).
+# per index. `dat` is wide (year + one numeric column per series in `cols`).
 echart_yearly_bars <- function(
-  df,
+  dat,
   cols,
   labels = cols,
   y_name = "Acum. no ano (%)"
 ) {
-  d <- df[order(df$year), , drop = FALSE]
+  d <- dat[order(dat$year), , drop = FALSE]
   present <- intersect(cols, names(d))
   if (length(present) == 0 || nrow(d) == 0) {
     return(echart_empty())
@@ -499,8 +347,8 @@ echart_yearly_bars <- function(
 
 # Stacked area: one filled band per column of a wide date frame (the mix of a
 # total over time). Bands are drawn in `cols` order, bottom to top.
-echart_stacked_area <- function(df, cols, y_name, window_start = NULL) {
-  d <- dplyr::arrange(df, date)
+echart_stacked_area <- function(dat, cols, y_name, window_start = NULL) {
+  d <- dplyr::arrange(dat, date)
   present <- intersect(cols, names(d))
   if (length(present) == 0 || nrow(d) == 0) {
     return(echart_empty())
@@ -525,43 +373,16 @@ echart_stacked_area <- function(df, cols, y_name, window_start = NULL) {
   echart_finish(e, y_name, window_start, zero_line = FALSE, y_min = 0)
 }
 
-# Several STL-trend series from a wide df (date + one column per series): each
-# column is reduced to its STL trend and drawn as one bold line — the smoothed
-# counterpart to echart_wide_lines(), without the monthly noise.
-echart_wide_trends <- function(
-  df,
-  cols,
-  y_name,
-  window_start = NULL,
-  zero_line = FALSE
-) {
-  d <- dplyr::arrange(df, date)
-  present <- intersect(cols, names(d))
-  if (length(present) == 0 || nrow(d) == 0) {
-    return(echart_empty())
-  }
 
-  for (col in present) {
-    d[[col]] <- stl_trend_vec(d[[col]], d$date)
-  }
-  if (!any(!is.na(unlist(d[present])))) {
-    return(echart_empty())
-  }
-
-  echarts4r::e_charts(d, date) |>
-    add_lines(present, get_color_palette(length(present))) |>
-    echart_finish(y_name, window_start, zero_line = zero_line)
-}
-
-# 100% stacked bars: each row (year) normalized so its bands sum to 100. `df`
+# 100% stacked bars: each row (year) normalized so its bands sum to 100. `dat`
 # is a wide frame (year + one share column per band, already in percent).
 echart_share_bars <- function(
-  df,
+  dat,
   cols,
   labels = cols,
   y_name = "Participação (%)"
 ) {
-  d <- df[order(df$year), , drop = FALSE]
+  d <- dat[order(dat$year), , drop = FALSE]
   present <- intersect(cols, names(d))
   if (length(present) == 0 || nrow(d) == 0) {
     return(echart_empty())
@@ -603,16 +424,16 @@ echart_share_bars <- function(
     echarts4r::e_toolbox_feature(feature = "saveAsImage")
 }
 
-# Several named series from a wide df (date + one column per series).
+# Several named series from a wide dat (date + one column per series).
 echart_wide_lines <- function(
-  df,
+  dat,
   cols,
   y_name,
   window_start = NULL,
   zero_line = FALSE,
   tooltip_fmt = NULL
 ) {
-  d <- dplyr::arrange(df, date)
+  d <- dplyr::arrange(dat, date)
   present <- intersect(cols, names(d))
   if (length(present) == 0 || nrow(d) == 0) {
     return(echart_empty())
