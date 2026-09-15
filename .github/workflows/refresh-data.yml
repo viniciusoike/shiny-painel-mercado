@@ -43,6 +43,10 @@ jobs:
       # GetBCBData, which splits long SGS requests into windows the API
       # accepts, so bcb_series returns full history instead of dropping the
       # daily series. Move back to any::realestatebr once that reaches CRAN.
+      #
+      # trendseries also comes from GitHub, not CRAN: augment_rolling() exists
+      # only in the development version, and bcb_series preparation calls it.
+      # Move back to any::trendseries once that reaches CRAN.
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           dependencies: '"hard"'
@@ -53,10 +57,11 @@ jobs:
             github::viniciusoike/ekioplot
             any::lubridate
             github::viniciusoike/realestatebr
+            any::seasonal
             any::shiny
             any::tibble
             any::tidyr
-            any::trendseries
+            github::viniciusoike/trendseries
 
       - name: Prewarm data cache
         run: Rscript tools/prewarm.R
