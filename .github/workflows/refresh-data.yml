@@ -46,7 +46,8 @@ jobs:
       #
       # trendseries also comes from GitHub, not CRAN: augment_rolling() exists
       # only in the development version, and bcb_series preparation calls it.
-      # Move back to any::trendseries once that reaches CRAN.
+      # GitHub dependencies use immutable commits so an upstream push cannot
+      # change a scheduled refresh. Move back to CRAN releases when possible.
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           dependencies: '"hard"'
@@ -54,14 +55,17 @@ jobs:
             any::dplyr
             any::GetBCBData
             any::here
-            github::viniciusoike/ekioplot
+            github::viniciusoike/ekioplot@65c1770c9078bbaa4f016e34f117a9ca9c45215a
             any::lubridate
-            github::viniciusoike/realestatebr
+            github::viniciusoike/realestatebr@cc14ec5b3791bdb7cc74ee8d09b9b03456f411d9
             any::seasonal
             any::shiny
             any::tibble
             any::tidyr
-            github::viniciusoike/trendseries
+            github::viniciusoike/trendseries@286c2c34b97d5137fc92e79449c1d52b1f3ab670
+
+      - name: Check refresh contracts
+        run: Rscript tools/check-refresh.R
 
       - name: Prewarm data cache
         run: Rscript tools/prewarm.R
