@@ -21,7 +21,12 @@ prepare_cached_dataset <- function(name, data) {
   }
 
   fetched_at <- attr(data, "fetched_at")
-  prepared <- SOURCE_REGISTRY[[name]]$prep(data) |>
+  cached <- if (identical(name, "rppi")) {
+    migrate_rppi_cache(data)
+  } else {
+    data
+  }
+  prepared <- SOURCE_REGISTRY[[name]]$prep(cached) |>
     tibble::as_tibble()
   attr(prepared, "fetched_at") <- fetched_at
   attr(prepared, "pipeline_version") <- PIPELINE_VERSION
