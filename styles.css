@@ -3,26 +3,70 @@
 
 /* Design tokens ------------------------------------------------------- */
 
+/* Hex codes come from the ekioplot brand scales (blue.700 is the brand navy)
+   and the ekio_brand identity palette (Soft Linen). */
 :root {
-  --ekio-blue-50: #EEF5FA;
-  --ekio-blue-200: #A8D0E8;
-  --ekio-blue-400: #4A90C2;
-  --ekio-blue-600: #2B4C7E;
+  --ekio-blue-200: #B1D8F2;
+  --ekio-blue-300: #84B8DD;
+  --ekio-blue-400: #5597CC;
+  --ekio-blue-500: #3E76AC;
+  --ekio-blue-600: #305687;
   --ekio-blue-700: #1E3A5F;
   --ekio-blue-900: #0D1B2A;
-  --ekio-gray-100: #F7FAFC;
-  --ekio-gray-200: #EDF2F7;
-  --ekio-gray-300: #E2E8F0;
-  --ekio-gray-400: #CBD5E0;
-  --ekio-gray-500: #A0AEC0;
-  --ekio-gray-600: #718096;
-  --ekio-gray-700: #4A5568;
-  --ekio-gray-800: #2D3748;
-  --ekio-gray-900: #1A202C;
-  --ekio-orange: #DD6B20;
-  --ekio-teal: #2C7A7B;
-  --ekio-radius: 8px;
-  --ekio-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --ekio-gray-200: #CFD2D5;
+  --ekio-gray-400: #8D9197;
+  --ekio-gray-500: #6E7378;
+  --ekio-gray-600: #52555A;
+  --ekio-gray-700: #373A3D;
+  --ekio-stone-200: #D4D1CD;
+  --ekio-stone-300: #B4B0AB;
+  --ekio-orange-400: #D3742A;
+  --ekio-orange-500: #B15400;
+  --ekio-linen: #F2EDE2;
+
+  --ekio-paper: #FBFBF6;
+  --ekio-paper-raised: #FFFFFB;
+  --ekio-ink: var(--ekio-blue-900);
+  --ekio-ink-2: var(--ekio-gray-700);
+  --ekio-ink-3: var(--ekio-gray-500);
+
+  --ekio-rule-strong: 2px solid var(--ekio-blue-700);
+  --ekio-rule: 1px solid var(--ekio-stone-200);
+  --ekio-rule-soft: 1px solid rgba(13, 27, 42, 0.08);
+
+  --ekio-focus: 2px solid var(--ekio-blue-500);
+  --ekio-marker: 3px;
+  --ekio-ease: 120ms ease-out;
+}
+
+/* Base ------------------------------------------------------------------ */
+
+/* brand.yml sets the family alone; keep a sans fallback behind it. */
+:root {
+  --bs-body-font-family: "Host Grotesk", var(--bs-font-sans-serif);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--bs-body-font-family);
+}
+
+body {
+  font-feature-settings: "calt" 1;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--ekio-blue-600);
+  text-underline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
 }
 
 /* Sidebar ------------------------------------------------------------- */
@@ -32,69 +76,75 @@
   gap: 0;
 }
 
+.ekio-nav-item,
+.filter-chips .radio-inline span {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .ekio-brand {
-  padding: 24px 20px 20px;
+  padding: 28px 20px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .ekio-brand h1 {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
-  letter-spacing: 2px;
+  letter-spacing: 0.18em;
   color: #fff;
   margin: 0;
 }
 
 .ekio-brand p {
-  font-size: 11px;
-  color: var(--ekio-gray-500);
-  margin: 4px 0 0;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
+  font-size: 13px;
+  color: var(--ekio-gray-400);
+  margin: 2px 0 0;
 }
 
 .ekio-nav {
   flex: 1;
-  padding: 16px 0;
+  padding: 12px 0;
   overflow-y: auto;
 }
 
 .ekio-nav-section {
-  padding: 0 12px;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .ekio-nav-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--ekio-gray-500);
-  padding: 8px 12px 4px;
+  letter-spacing: 0.08em;
+  color: var(--ekio-gray-400);
+  padding: 12px 20px 4px;
 }
 
+/* Active page: an orange marker on the sidebar edge, not a filled pill. */
 .ekio-nav-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 12px;
-  border-radius: 6px;
-  color: var(--ekio-gray-400);
+  padding: 8px 20px 8px calc(20px - var(--ekio-marker));
+  border-left: var(--ekio-marker) solid transparent;
+  color: var(--ekio-gray-200);
   text-decoration: none;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color var(--ekio-ease), background-color var(--ekio-ease);
 }
 
 .ekio-nav-item:hover {
-  background: rgba(255, 255, 255, 0.06);
   color: #fff;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .ekio-nav-item.active {
-  background: var(--ekio-blue-700);
+  border-left-color: var(--ekio-orange-400);
+  background: rgba(255, 255, 255, 0.07);
   color: #fff;
+  font-weight: 600;
 }
 
 .ekio-nav-item:focus-visible {
@@ -103,134 +153,265 @@
 }
 
 .ekio-nav-item .nav-icon {
-  width: 20px;
+  width: 16px;
   display: flex;
-  align-items: center;
   justify-content: center;
-  font-size: 16px;
   flex-shrink: 0;
+  font-size: 14px;
+  color: var(--ekio-gray-400);
+}
+
+.ekio-nav-item:hover .nav-icon,
+.ekio-nav-item.active .nav-icon {
+  color: #fff;
 }
 
 .ekio-sidebar-footer {
-  padding: 16px 20px;
+  padding: 16px 20px 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
-  font-size: 11px;
-  color: var(--ekio-gray-600);
   margin-top: auto;
 }
 
 .ekio-updated-label {
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-size: 10px;
-  color: var(--ekio-gray-600);
+  font-size: 12px;
+  color: var(--ekio-gray-400);
 }
 
 .ekio-updated-date {
   margin-top: 2px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--ekio-gray-300);
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+/* On phones bslib stacks the sidebar below the page. Move it to the top as a
+   brand row plus a scrolling strip of pages, marked from below. */
+@media (max-width: 575.98px) {
+  .bslib-sidebar-layout:has(> .ekio-sidebar) {
+    display: flex !important;
+    flex-direction: column;
+  }
+
+  .bslib-sidebar-layout > .ekio-sidebar {
+    order: -1;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .bslib-sidebar-layout > .ekio-sidebar > .sidebar-content {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+
+  .ekio-brand {
+    padding: 12px 16px;
+    border-bottom: 0;
+  }
+
+  .ekio-brand p,
+  .ekio-nav-label {
+    display: none;
+  }
+
+  .ekio-sidebar-footer {
+    order: 1;
+    margin: 0 0 0 auto;
+    padding: 10px 16px;
+    border-top: 0;
+    text-align: right;
+  }
+
+  .ekio-updated-label {
+    font-size: 11px;
+  }
+
+  .ekio-updated-date {
+    margin: 0;
+    font-size: 13px;
+  }
+
+  .ekio-nav {
+    order: 2;
+    flex: 1 0 100%;
+    display: flex;
+    padding: 0;
+    overflow-x: auto;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    scrollbar-width: none;
+  }
+
+  .ekio-nav-section {
+    display: flex;
+    margin: 0;
+  }
+
+  .ekio-nav-item {
+    padding: 10px 14px 7px;
+    border-left: 0;
+    border-bottom: var(--ekio-marker) solid transparent;
+    white-space: nowrap;
+  }
+
+  .ekio-nav-item.active {
+    border-bottom-color: var(--ekio-orange-400);
+  }
 }
 
 /* Page chrome ---------------------------------------------------------- */
 
 .ekio-pages {
-  max-width: 1400px;
+  max-width: 1440px;
 }
 
+/* Keep keyboard focus clear of the sticky filter bar */
+.bslib-sidebar-layout > .main {
+  scroll-padding-top: 64px;
+}
+
+/* Title and description share one baseline, like a report masthead. */
 .page-header {
-  margin-bottom: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 16px;
+  row-gap: 2px;
+  margin: 0 0 20px;
 }
 
 .page-header h2 {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--ekio-gray-900);
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+  color: var(--ekio-ink);
   margin: 0;
+  text-wrap: balance;
 }
 
 .page-header p {
-  font-size: 13px;
-  color: var(--ekio-gray-600);
-  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--ekio-ink-3);
+  margin: 0;
 }
 
-/* KPI cards (Panorama) -------------------------------------------------- */
+/* Row rhythm between chart plates */
+.ekio-pages .bslib-grid {
+  column-gap: 32px;
+  row-gap: 32px;
+  margin-bottom: 32px;
+}
 
-.kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-  gap: 12px;
+/* KPI board ------------------------------------------------------------ */
+
+/* A ruled indicator table. The lead indicator sits in its own column on
+   linen; the rest share a ledger of hairline cells. The ledger stacks under
+   the lead when the board is narrow. */
+.kpi-board {
+  container: kpiboard / inline-size;
+  display: flex;
+  flex-wrap: wrap;
+  border-top: var(--ekio-rule-strong);
+  border-bottom: var(--ekio-rule);
   margin-bottom: 28px;
 }
 
-.kpi-card {
-  background: #fff;
-  border-radius: var(--ekio-radius);
-  padding: 16px;
-  box-shadow: var(--ekio-shadow-sm);
-  border: 1px solid var(--ekio-gray-200);
-  position: relative;
+.kpi-lead {
+  flex: 1 1 240px;
+  background: var(--ekio-linen);
+}
+
+.kpi-ledger {
+  flex: 999 1 640px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   overflow: hidden;
+  border-top: var(--ekio-rule);
 }
 
-.kpi-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
+.kpi-ledger:has(> :nth-child(6):last-child),
+.kpi-ledger:has(> :nth-child(5):last-child) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.kpi-card.blue::before   { background: var(--ekio-blue-700); }
-.kpi-card.teal::before   { background: var(--ekio-teal); }
-.kpi-card.orange::before { background: var(--ekio-orange); }
-.kpi-card.amber::before  { background: #D69E2E; }
-.kpi-card.purple::before { background: #805AD5; }
-.kpi-card.green::before  { background: #38A169; }
-.kpi-card.red::before    { background: #C53030; }
+/* An odd count leaves one open slot; the last cell takes it. */
+.kpi-ledger > .kpi-card:last-child:nth-child(odd) {
+  grid-column: span 2;
+}
+
+.kpi-ledger > .kpi-card {
+  margin: -1px 0 0 -1px;
+  border-top: var(--ekio-rule);
+  border-left: var(--ekio-rule);
+}
+
+@container kpiboard (min-width: 880px) {
+  .kpi-ledger {
+    border-top: 0;
+    border-left: var(--ekio-rule);
+  }
+}
+
+@container kpiboard (max-width: 640px) {
+  .kpi-ledger {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+.kpi-card {
+  padding: 12px 16px 14px;
+  min-width: 0;
+}
 
 .kpi-label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--ekio-gray-600);
-  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ekio-ink-2);
+  margin-bottom: 2px;
 }
 
 .kpi-value {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--ekio-gray-900);
-  line-height: 1.1;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  color: var(--ekio-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .kpi-meta {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 8px;
-  font-size: 11px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 6px;
+  margin-top: 4px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
 .kpi-delta {
   font-weight: 600;
 }
 
-.kpi-delta.up      { color: #38A169; }
-.kpi-delta.down    { color: #C53030; }
-.kpi-delta.neutral { color: var(--ekio-gray-600); }
+/* Direction lives in the sign. Declines take the attention color; nothing is
+   coded as good or bad. */
+.kpi-delta.up      { color: var(--ekio-ink-2); }
+.kpi-delta.down    { color: var(--ekio-orange-500); }
+.kpi-delta.neutral { color: var(--ekio-ink-3); }
 
 .kpi-period {
-  color: var(--ekio-gray-500);
+  color: var(--ekio-ink-3);
 }
 
+/* Twelve months of bars; the latest month is marked in orange. */
 .kpi-sparkline {
   margin-top: 10px;
-  height: 28px;
+  height: 22px;
   display: flex;
   align-items: flex-end;
   gap: 2px;
@@ -238,137 +419,267 @@
 
 .kpi-sparkline .bar {
   flex: 1;
+  min-height: 2px;
   background: var(--ekio-blue-200);
-  border-radius: 2px 2px 0 0;
-  min-height: 3px;
 }
 
 .kpi-sparkline .bar:last-child {
-  background: var(--ekio-blue-600);
+  background: var(--ekio-orange-400);
+}
+
+.kpi-lead .kpi-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 20px 16px;
+}
+
+.kpi-lead .kpi-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ekio-ink);
+}
+
+.kpi-lead .kpi-value {
+  font-size: 40px;
+  letter-spacing: -0.02em;
+  margin-top: 4px;
+}
+
+.kpi-lead .kpi-meta {
+  font-size: 13px;
+}
+
+.kpi-lead .kpi-sparkline {
+  margin-top: auto;
+  padding-top: 16px;
+  height: 64px;
+  gap: 3px;
+}
+
+.kpi-lead .kpi-sparkline .bar {
+  min-height: 3px;
+  background: var(--ekio-blue-300);
+}
+
+.kpi-lead .kpi-sparkline .bar:last-child {
+  background: var(--ekio-orange-400);
+}
+
+/* Stacked board: the lead reads across one row, bars on the right. */
+@container kpiboard (max-width: 879px) {
+  .kpi-lead .kpi-card {
+    display: grid;
+    grid-template-columns: auto minmax(120px, 280px);
+    grid-template-rows: auto auto auto;
+    column-gap: 32px;
+    justify-content: space-between;
+  }
+
+  .kpi-lead .kpi-sparkline {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    align-self: end;
+    height: 56px;
+  }
 }
 
 /* Filter bar ------------------------------------------------------------ */
 
+/* A toolbar between hairlines that stays in reach while the page scrolls. */
 .filter-bar {
+  position: sticky;
+  /* Stick to the scroll container's edge, not inside its padding */
+  top: calc(-1 * var(--_padding, 1.5rem));
+  z-index: 20;
   display: flex;
-  gap: 16px;
-  align-items: center;
-  margin-bottom: 20px;
-  padding: 10px 16px;
-  background: #fff;
-  border-radius: var(--ekio-radius);
-  border: 1px solid var(--ekio-gray-200);
-  box-shadow: var(--ekio-shadow-sm);
   flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 28px;
+  margin: 0 0 24px;
+  padding: 8px 0;
+  background: var(--ekio-paper);
+  border-top: var(--ekio-rule);
+  border-bottom: var(--ekio-rule);
 }
 
-.filter-group {
+.filter-group > .shiny-input-container {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.filter-group > label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--ekio-gray-600);
-  margin: 0;
-}
-
-.filter-bar .form-group,
-.filter-bar .shiny-input-container {
+  gap: 10px;
+  width: auto;
   margin-bottom: 0;
+}
+
+.filter-group .control-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ekio-ink-3);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.filter-bar .selectize-control {
+  min-width: 116px;
 }
 
 .filter-bar .selectize-input {
   min-height: 0;
-  padding: 5px 10px;
+  padding: 4px 28px 4px 10px;
+  font-size: 13px;
+  border-color: var(--ekio-stone-300);
+  border-radius: 2px;
+  background: var(--ekio-paper-raised);
+  box-shadow: none;
+}
+
+.filter-bar .selectize-input.focus {
+  border-color: var(--ekio-blue-500);
+  outline: var(--ekio-focus);
+  outline-offset: 1px;
+  box-shadow: none;
+}
+
+.filter-bar .selectize-dropdown {
+  border-radius: 2px;
   font-size: 13px;
 }
 
-.filter-bar .btn-sm {
-  font-size: 12px;
-}
-
-/* Métrica radio styled as chips */
+/* Radio groups as a segmented control; the checked option carries the same
+   orange marker as the active sidebar page. */
 .filter-chips .shiny-options-group {
-  display: flex;
-  gap: 4px;
+  display: inline-flex;
+  border: 1px solid var(--ekio-stone-300);
+  border-radius: 2px;
+  background: var(--ekio-paper-raised);
 }
 
-.filter-chips .form-check-inline {
+.filter-chips .shiny-options-group > .radio-inline {
+  position: relative;
   margin: 0;
   padding: 0;
 }
 
-.filter-chips .form-check-input {
+.filter-chips .radio-inline + .radio-inline {
+  border-left: 1px solid var(--ekio-stone-300);
+}
+
+.filter-chips .radio-inline input {
   position: absolute;
   opacity: 0;
-  pointer-events: none;
+  width: 1px;
+  height: 1px;
+  margin: 0;
 }
 
-.filter-chips .form-check-label {
-  display: inline-block;
-  font-size: 12px;
-  padding: 5px 12px;
-  border-radius: 14px;
-  border: 1px solid var(--ekio-gray-300);
-  background: #fff;
-  color: var(--ekio-gray-700);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.filter-chips .form-check-label:hover {
-  border-color: var(--ekio-blue-400);
-  color: var(--ekio-blue-700);
-}
-
-.filter-chips .form-check-input:checked + .form-check-label {
-  background: var(--ekio-blue-700);
-  border-color: var(--ekio-blue-700);
-  color: #fff;
-}
-
-/* The radio is visually hidden; surface keyboard focus on its chip label. */
-.filter-chips .form-check-input:focus-visible + .form-check-label {
-  outline: 2px solid var(--ekio-blue-400);
-  outline-offset: 1px;
-}
-
-/* Cards ----------------------------------------------------------------- */
-
-.card {
-  border: 1px solid var(--ekio-gray-200);
-  border-radius: var(--ekio-radius);
-  box-shadow: var(--ekio-shadow-sm);
-}
-
-.card-header {
+.filter-chips .radio-inline span {
+  display: block;
+  padding: 4px 12px;
   font-size: 13px;
+  font-weight: 500;
+  color: var(--ekio-ink-3);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--ekio-ease), box-shadow var(--ekio-ease);
+}
+
+.filter-chips .radio-inline span:hover {
+  color: var(--ekio-ink);
+}
+
+.filter-chips .radio-inline input:checked + span {
+  color: var(--ekio-ink);
   font-weight: 600;
-  color: var(--ekio-gray-800);
-  background: #fff;
-  border-bottom: 1px solid var(--ekio-gray-100);
+  box-shadow: inset 0 calc(-1 * var(--ekio-marker)) 0 var(--ekio-orange-400);
+}
+
+.filter-chips .radio-inline input:focus-visible + span {
+  outline: var(--ekio-focus);
+  outline-offset: 2px;
+}
+
+/* City picker inside the comparison plate */
+.chart-plate .selectize-input {
+  min-height: 0;
+  padding: 4px 8px;
+  font-size: 13px;
+  border-color: var(--ekio-stone-300);
+  border-radius: 2px;
+  background: var(--ekio-paper-raised);
+  box-shadow: none;
+}
+
+.chart-plate .selectize-input.focus {
+  border-color: var(--ekio-blue-500);
+  outline: var(--ekio-focus);
+  outline-offset: 1px;
+  box-shadow: none;
+}
+
+.chart-plate .selectize-control.multi .selectize-input > div {
+  margin: 2px 4px 2px 0;
+  padding: 1px 6px;
+  border-radius: 0;
+  background: var(--ekio-linen);
+  color: var(--ekio-ink);
+}
+
+/* Chart plates ---------------------------------------------------------- */
+
+/* Charts sit on the page between a navy rule and open space, like figures in
+   a printed bulletin, rather than inside floating cards. */
+.card.chart-plate {
+  --bs-card-bg: transparent;
+  --bs-card-cap-bg: transparent;
+  --bs-card-border-width: 0;
+  --bs-card-border-radius: 0;
+  --bs-card-inner-border-radius: 0;
+  --bs-card-spacer-x: 0;
+  --bs-card-spacer-y: 6px;
+  --bs-card-cap-padding-x: 0;
+  --bs-card-cap-padding-y: 10px;
+  border-top: var(--ekio-rule-strong);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.chart-plate .card-header {
+  border-bottom: 0;
+  padding-bottom: 2px;
 }
 
 .chart-card-header {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  column-gap: 16px;
+}
+
+.chart-title {
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ekio-ink);
+  text-wrap: balance;
 }
 
 .chart-tag {
-  font-size: 10px;
-  padding: 2px 8px;
-  border-radius: 10px;
-  background: var(--ekio-blue-50);
-  color: var(--ekio-blue-700);
-  font-weight: 500;
-  white-space: nowrap;
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--ekio-ink-3);
+  text-align: right;
+}
+
+.card.chart-plate[data-full-screen="true"] {
+  --bs-card-bg: var(--ekio-paper-raised);
+  padding: 0 24px 16px;
+}
+
+.chart-plate .bslib-full-screen-enter {
+  border-radius: 0;
+  box-shadow: none;
 }
 
 /* Mini table (Resumo por Cidade) ----------------------------------------- */
@@ -376,29 +687,39 @@
 .mini-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 
 .mini-table th {
   text-align: left;
-  padding: 8px 12px;
+  padding: 8px 10px 6px;
+  font-size: 12px;
   font-weight: 600;
-  color: var(--ekio-gray-700);
-  background: var(--ekio-gray-100);
-  border-bottom: 1px solid var(--ekio-gray-200);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
+  color: var(--ekio-ink-2);
+  background: var(--ekio-paper);
+  border-bottom: 1px solid var(--ekio-blue-700);
+  white-space: nowrap;
 }
 
 .mini-table td {
-  padding: 7px 12px;
-  border-bottom: 1px solid var(--ekio-gray-100);
-  color: var(--ekio-gray-800);
+  padding: 6px 10px;
+  border-bottom: var(--ekio-rule-soft);
+  color: var(--ekio-ink);
 }
 
-.mini-table tbody tr:nth-child(even) {
-  background: var(--ekio-gray-100);
+.mini-table th:first-child,
+.mini-table td:first-child {
+  padding-left: 0;
+}
+
+.mini-table th:last-child,
+.mini-table td:last-child {
+  padding-right: 0;
+}
+
+.mini-table tbody tr:hover {
+  background: var(--ekio-linen);
 }
 
 .mini-table tr:last-child td {
@@ -407,16 +728,10 @@
 
 .mini-table .num {
   text-align: right;
-  font-variant-numeric: tabular-nums;
-  font-weight: 500;
-}
-
-.mini-table .num.positive {
-  color: #38A169;
 }
 
 .mini-table .num.negative {
-  color: #C53030;
+  color: var(--ekio-orange-500);
 }
 
 /* Scrollable table container with a pinned header */
@@ -431,43 +746,45 @@
   z-index: 1;
 }
 
+.chart-plate[data-full-screen="true"] .table-scroll {
+  max-height: none;
+}
+
 /* Sobre ----------------------------------------------------------------- */
 
 .about-content h3 {
-  font-size: 16px;
-  font-weight: 700;
-  margin: 20px 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+  margin: 28px 0 8px;
 }
 
 .about-content > p {
-  max-width: 720px;
-  font-size: 13px;
-  color: var(--ekio-gray-700);
+  max-width: 68ch;
+  font-size: 14px;
+  color: var(--ekio-ink-2);
 }
 
 .about-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 12px;
-  margin: 12px 0 8px;
+  column-gap: 32px;
+  margin: 8px 0;
   max-width: 1000px;
 }
 
 .about-card {
-  background: #fff;
-  border: 1px solid var(--ekio-gray-300);
-  border-radius: var(--ekio-radius);
-  padding: 16px;
+  border-top: var(--ekio-rule);
+  padding: 12px 0 16px;
 }
 
 .about-card h4 {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
-  margin: 0 0 6px;
+  margin: 0 0 4px;
 }
 
 .about-card p {
-  font-size: 12px;
-  color: var(--ekio-gray-700);
+  font-size: 13px;
+  color: var(--ekio-ink-2);
   margin: 0;
 }

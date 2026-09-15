@@ -24,6 +24,24 @@ if (!requireNamespace("brand.yml", quietly = TRUE)) {
 theme <- bslib::bs_theme(version = 5, brand = TRUE) |>
   bslib::bs_add_rules(readLines(here::here("styles.css")))
 
+# Self-hosted Host Grotesk faces (400-700), named as the base font in
+# _brand.yml. The regular face is preloaded so ECharts, which draws text on a
+# canvas once and never redraws for a late font, finds it ready.
+host_grotesk <- htmltools::htmlDependency(
+  name = "host-grotesk",
+  version = "1.0.0",
+  src = here::here("fonts"),
+  stylesheet = "host-grotesk.css",
+  head = paste0(
+    "<link rel=\"preload\" href=\"host-grotesk-1.0.0/HostGrotesk-Regular.woff2\"",
+    " as=\"font\" type=\"font/woff2\" crossorigin>"
+  )
+)
+
+# Chart text uses the app's body font; echarts4r applies it to every chart
+# at build time.
+echarts4r::e_common(font_family = "'Host Grotesk', system-ui, sans-serif")
+
 # UI helpers ------------------------------------------------------------------
 
 page_header <- function(title, subtitle) {
@@ -34,6 +52,8 @@ page_header <- function(title, subtitle) {
   )
 }
 
+# `icon` is a Font Awesome name, drawn as inline SVG (decorative; the label
+# carries the meaning).
 ekio_nav_item <- function(value, label, icon, active = FALSE) {
   shiny::tags$a(
     class = paste0("ekio-nav-item", if (active) " active" else ""),
@@ -41,7 +61,10 @@ ekio_nav_item <- function(value, label, icon, active = FALSE) {
     role = "link",
     tabindex = "0",
     `aria-current` = if (active) "page" else NULL,
-    shiny::tags$span(class = "nav-icon", `aria-hidden` = "true", icon),
+    shiny::tags$span(
+      class = "nav-icon",
+      fontawesome::fa(icon, fill = "currentColor", a11y = "deco")
+    ),
     shiny::tags$span(label)
   )
 }
@@ -65,10 +88,11 @@ about_card <- function(title, text) {
 
 chart_card <- function(title, tag, ..., height = "300px", output_id = NULL) {
   bslib::card(
+    class = "chart-plate",
     full_screen = TRUE,
     bslib::card_header(
       class = "chart-card-header",
-      shiny::span(title),
+      shiny::span(class = "chart-title", title),
       shiny::span(class = "chart-tag", tag)
     ),
     ...,
@@ -78,11 +102,45 @@ chart_card <- function(title, tag, ..., height = "300px", output_id = NULL) {
   )
 }
 
-filter_group <- function(label, ..., class = NULL, style = NULL) {
+# Same plate as chart_card(), holding an HTML table from a uiOutput.
+table_card <- function(title, tag, output_id) {
+  bslib::card(
+    class = "chart-plate",
+    full_screen = TRUE,
+    bslib::card_header(
+      class = "chart-card-header",
+      shiny::span(class = "chart-title", title),
+      shiny::span(class = "chart-tag", tag)
+    ),
+    bslib::card_body(class = "p-0", shiny::uiOutput(output_id))
+  )
+}
+
+# KPI board: the first card leads in its own column, the rest share a ruled
+# ledger beside it.
+kpi_board <- function(lead, ...) {
+  shiny::div(
+    class = "kpi-board",
+    shiny::div(class = "kpi-lead", lead),
+    shiny::div(class = "kpi-ledger", ...)
+  )
+}
+
+# One control in a page's filter bar. Inputs carry their own label so the
+# select and the radio group stay named for assistive technology.
+filter_group <- function(..., class = NULL, style = NULL) {
   shiny::div(
     class = paste(c("filter-group", class), collapse = " "),
     style = style,
-    shiny::tags$label(label),
+    ...
+  )
+}
+
+filter_bar <- function(...) {
+  shiny::div(
+    class = "filter-bar",
+    role = "group",
+    `aria-label` = "Filtros",
     ...
   )
 }
@@ -159,14 +217,12 @@ page_precos <- shiny::tagList(
 
   shiny::uiOutput("precos_kpi_grid"),
 
-  shiny::div(
-    class = "filter-bar",
+  filter_bar(
     filter_group(
-      "Métrica",
       class = "filter-chips",
       shiny::radioButtons(
         "metric",
-        NULL,
+        "Métrica",
         inline = TRUE,
         choices = c(
           "Var. 12m" = "acum12m",
@@ -176,19 +232,17 @@ page_precos <- shiny::tagList(
       )
     ),
     filter_group(
-      "Período",
       style = "margin-left:auto;",
       shiny::selectInput(
         "period",
-        NULL,
+        "Período",
         choices = c(
           "3 anos" = "3",
           "5 anos" = "5",
           "10 anos" = "10",
           "Máximo" = "0"
         ),
-        selected = "5",
-        width = "110px"
+        selected = "5"
       )
     )
   ),
@@ -231,15 +285,7 @@ page_precos <- shiny::tagList(
       output_id = "plot_yearly_bars",
       height = "300px"
     ),
-    bslib::card(
-      full_screen = TRUE,
-      bslib::card_header(
-        class = "chart-card-header",
-        shiny::span("Variação Anual — Histórico"),
-        shiny::span(class = "chart-tag", "% no ano")
-      ),
-      bslib::card_body(class = "p-0", shiny::uiOutput("yearly_table"))
-    )
+    table_card("Variação Anual — Histórico", "% no ano", "yearly_table")
   ),
 
   bslib::layout_columns(
@@ -258,28 +304,18 @@ page_precos <- shiny::tagList(
       output_id = "plot_compare",
       height = "280px"
     ),
-    bslib::card(
-      full_screen = TRUE,
-      bslib::card_header(
-        class = "chart-card-header",
-        shiny::span("Resumo por Cidade — Último Mês"),
-        shiny::span(class = "chart-tag", "FipeZap")
-      ),
-      bslib::card_body(class = "p-0", shiny::uiOutput("city_table"))
-    )
+    table_card("Resumo por Cidade — Último Mês", "FipeZap", "city_table")
   )
 )
 
 period_filter <- function(id, selected = "10") {
   filter_group(
-    "Período",
     style = "margin-left:auto;",
     shiny::selectInput(
       id,
-      NULL,
+      "Período",
       choices = c("5 anos" = "5", "10 anos" = "10", "Máximo" = "0"),
-      selected = selected,
-      width = "110px"
+      selected = selected
     )
   )
 }
@@ -289,7 +325,7 @@ page_credito <- shiny::tagList(
     "Crédito",
     "Financiamento imobiliário, taxas e inadimplência — Abecip / BCB"
   ),
-  shiny::div(class = "filter-bar", period_filter("cred_period")),
+  filter_bar(period_filter("cred_period")),
   bslib::layout_columns(
     col_widths = c(6, 6),
     trend_card_ui(
@@ -325,14 +361,12 @@ page_credito <- shiny::tagList(
 
 page_mercado <- shiny::tagList(
   page_header("Mercado", "Lançamentos, vendas e oferta — Abrainc / FIPE"),
-  shiny::div(
-    class = "filter-bar",
+  filter_bar(
     filter_group(
-      "Segmento",
       class = "filter-chips",
       shiny::radioButtons(
         "mkt_segmento",
-        NULL,
+        "Segmento",
         inline = TRUE,
         choices = names(ABRAINC_SEGMENTO),
         selected = "Total"
@@ -368,10 +402,7 @@ page_mercado <- shiny::tagList(
 
 page_macro <- shiny::tagList(
   page_header("Macro", "Indicadores macroeconômicos — séries do Banco Central"),
-  shiny::div(
-    class = "filter-bar",
-    period_filter("macro_period", selected = "5")
-  ),
+  filter_bar(period_filter("macro_period", selected = "5")),
   bslib::layout_columns(
     col_widths = c(6, 6),
     chart_card(
@@ -408,14 +439,12 @@ page_atividade <- shiny::tagList(
     "Atividade",
     "Emprego, renda e produção — séries do Banco Central (SGS)"
   ),
-  shiny::div(
-    class = "filter-bar",
+  filter_bar(
     filter_group(
-      "Métrica",
       class = "filter-chips",
       shiny::radioButtons(
         "ativ_metric",
-        NULL,
+        "Métrica",
         inline = TRUE,
         choices = ATIVIDADE_METRICA,
         selected = "sa"
@@ -491,20 +520,7 @@ page_saopaulo <- shiny::tagList(
     "Dados detalhados do mercado paulistano — Secovi-SP"
   ),
 
-  shiny::div(
-    class = "filter-bar",
-    filter_group(
-      "Período",
-      style = "margin-left:auto;",
-      shiny::selectInput(
-        "sp_period",
-        NULL,
-        choices = c("5 anos" = "5", "10 anos" = "10", "Máximo" = "0"),
-        selected = "10",
-        width = "110px"
-      )
-    )
-  ),
+  filter_bar(period_filter("sp_period")),
 
   shiny::uiOutput("sp_kpi_grid"),
 
@@ -562,14 +578,10 @@ page_saopaulo <- shiny::tagList(
       output_id = "sp_rooms_share",
       height = "300px"
     ),
-    bslib::card(
-      full_screen = TRUE,
-      bslib::card_header(
-        class = "chart-card-header",
-        shiny::span("Vendas Anuais por Dormitório"),
-        shiny::span(class = "chart-tag", "unidades · soma anual")
-      ),
-      bslib::card_body(class = "p-0", shiny::uiOutput("sp_rooms_table"))
+    table_card(
+      "Vendas Anuais por Dormitório",
+      "unidades · soma anual",
+      "sp_rooms_table"
     )
   ),
   bslib::layout_columns(
@@ -668,30 +680,30 @@ ekio_sidebar <- bslib::sidebar(
   class = "ekio-sidebar",
   shiny::div(
     class = "ekio-brand",
-    shiny::h1("EKIO"),
+    shiny::h1(translate = "no", "EKIO"),
     shiny::p("Mercado Imobiliário")
   ),
   shiny::tags$nav(
     class = "ekio-nav",
     ekio_nav_section(
       "Visão Geral",
-      ekio_nav_item("panorama", "Panorama", "◉", active = TRUE)
+      ekio_nav_item("panorama", "Panorama", "table-cells-large", active = TRUE)
     ),
     ekio_nav_section(
       "Indicadores",
-      ekio_nav_item("precos", "Preços", "▤"),
-      ekio_nav_item("credito", "Crédito", "◈"),
-      ekio_nav_item("mercado", "Mercado", "▦"),
-      ekio_nav_item("atividade", "Atividade", "◍"),
-      ekio_nav_item("macro", "Macro", "◎")
+      ekio_nav_item("precos", "Preços", "tag"),
+      ekio_nav_item("credito", "Crédito", "building-columns"),
+      ekio_nav_item("mercado", "Mercado", "city"),
+      ekio_nav_item("atividade", "Atividade", "industry"),
+      ekio_nav_item("macro", "Macro", "chart-line")
     ),
     ekio_nav_section(
       "Regional",
-      ekio_nav_item("saopaulo", "São Paulo", "◆")
+      ekio_nav_item("saopaulo", "São Paulo", "location-dot")
     ),
     ekio_nav_section(
       NULL,
-      ekio_nav_item("sobre", "Sobre", "ⓘ")
+      ekio_nav_item("sobre", "Sobre", "circle-info")
     )
   ),
   shiny::div(
@@ -740,6 +752,7 @@ ui <- bslib::page_sidebar(
       bslib::nav_panel_hidden("sobre", page_sobre)
     )
   ),
+  host_grotesk,
   shiny::tags$script(shiny::HTML(nav_js))
 )
 
@@ -1001,8 +1014,7 @@ server <- function(input, output, session) {
       )
     }
 
-    shiny::div(
-      class = "kpi-grid",
+    kpi_board(
       rppi_kpi(sp$sale, "IGMI-R", "Brazil", "IGMI-R", "blue"),
       infl_kpi("incc", "INCC", "orange"),
       infl_kpi("ipca", "IPCA", "teal"),
@@ -1145,8 +1157,7 @@ server <- function(input, output, session) {
       dir = pp_dir(diff(iv))
     )
 
-    shiny::div(
-      class = "kpi-grid",
+    kpi_board(
       selic_card,
       infl_card("ipca", "IPCA", "orange"),
       infl_card("igpm", "IGP-M", "teal"),
@@ -1312,8 +1323,7 @@ server <- function(input, output, session) {
       dir = if (!is.na(vgv_yoy) && vgv_yoy >= 0) "up" else "down"
     )
 
-    shiny::div(
-      class = "kpi-grid",
+    kpi_board(
       igmi_sp_card,
       ivar_sp_card,
       diff_card,
