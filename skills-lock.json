@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "frontend-design": {
+      "source": "ilm-alan/frontend-design",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "0346f726533c85e1ffd07e879ee64874efc1ef99c4a8979209aff53216f7588a"
+    },
+    "shiny-bslib": {
+      "source": "posit-dev/skills",
+      "sourceType": "github",
+      "skillPath": "shiny/shiny-bslib/SKILL.md",
+      "computedHash": "6a8e03b7907b9bd00ae304a4babeb090d90f2b590a95c7fba20872ba61aa704a"
+    },
+    "web-design-guidelines": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/web-design-guidelines/SKILL.md",
+      "computedHash": "f3bc47f890f42a44db1007ab390709ec368e4b8c089baee6b0007182236ac474"
+    }
+  }
+}

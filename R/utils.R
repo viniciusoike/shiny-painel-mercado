@@ -73,6 +73,7 @@ kpi_sparkline <- function(values, n = 12) {
   heights <- 3 + (v - rng[1]) / span * 97
   shiny::div(
     class = "kpi-sparkline",
+    `aria-hidden` = "true",
     lapply(heights, function(h) {
       shiny::div(class = "bar", style = sprintf("height:%.0f%%", h))
     })
@@ -250,9 +251,9 @@ city_summary_table <- function(sale, rent, cities) {
     shiny::tags$thead(
       shiny::tags$tr(
         shiny::tags$th("Cidade"),
-        shiny::tags$th("Venda 12m"),
-        shiny::tags$th("Aluguel 12m"),
-        shiny::tags$th("Var. Mensal")
+        shiny::tags$th(class = "num", "Venda 12m"),
+        shiny::tags$th(class = "num", "Aluguel 12m"),
+        shiny::tags$th(class = "num", "Var. Mensal")
       )
     ),
     shiny::tags$tbody(

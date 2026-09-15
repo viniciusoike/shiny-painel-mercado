@@ -2,38 +2,51 @@ meta:
   name: EKIO
   link: https://github.com/viniciusoike/shiny-painel-mercado
 
+# Hex codes follow the ekioplot brand scales (inst/ekio-palettes.yaml):
+# blue.700 is the brand navy, blue.900 the sidebar ink, orange.400 the accent.
 color:
   palette:
     ekio-blue: "#1E3A5F"
     ekio-blue-dark: "#0D1B2A"
-    ekio-blue-light: "#4A90C2"
-    ekio-teal: "#2C7A7B"
-    ekio-orange: "#DD6B20"
-    ekio-amber: "#D69E2E"
-    ekio-green: "#38A169"
-    ekio-red: "#C53030"
+    ekio-blue-mid: "#3E76AC"
+    ekio-baltic: "#225A7E"
+    ekio-teal: "#006261"
+    ekio-orange: "#D3742A"
+    ekio-orange-text: "#B15400"
+    ekio-gold: "#B88715"
+    ekio-green: "#448255"
+    ekio-red: "#B44D47"
+    ekio-gray: "#52555A"
+    ekio-paper: "#FBFBF6"
     blue: ekio-blue
     teal: ekio-teal
     orange: ekio-orange
     green: ekio-green
     red: ekio-red
-  foreground: "#1A202C"
-  background: "#FAFBFC"
+    yellow: ekio-gold
+    gray: ekio-gray
+  foreground: "#0D1B2A"
+  background: ekio-paper
   primary: ekio-blue
-  secondary: ekio-teal
+  secondary: ekio-gray
   success: ekio-green
-  info: ekio-blue-light
-  warning: ekio-amber
+  info: ekio-blue-mid
+  warning: ekio-gold
   danger: ekio-red
 
+# Host Grotesk is self-hosted from fonts/ (latin subset, SIL OFL). The faces
+# are registered by fonts/host-grotesk.css, attached in app.R: brand.yml's
+# `source: file` only emits the first file, which left 500-700 synthesized.
 typography:
   fonts:
-    - family: Helvetica Neue
+    - family: Host Grotesk
       source: system
   base:
-    family: Helvetica Neue
+    family: Host Grotesk
     size: 14px
     line-height: 1.5
   headings:
-    family: Helvetica Neue
-    weight: 700
+    family: Host Grotesk
+    weight: 600
+  monospace:
+    family: SFMono-Regular
