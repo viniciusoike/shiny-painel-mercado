@@ -21,7 +21,8 @@ if (length(seed) == 0) {
 
 app_files <- c(
   "app.R", "styles.css", "_brand.yml", "renv.lock", ".Rprofile",
-  list.files("R", pattern = "\\.R$", full.names = TRUE),
+  # recursive: R/_setup.R sources R/pipeline/ and R/dashboard/
+  list.files("R", pattern = "\\.R$", full.names = TRUE, recursive = TRUE),
   list.files("fonts", full.names = TRUE),
   seed
 )
